@@ -151,10 +151,77 @@ main { max-width: 1200px; margin: 0 auto; padding: 28px 16px; }
 #toast.ok  { border-color: var(--green2); }
 #toast.err { border-color: var(--red); }
 
-@media (max-width: 640px) {
-  .arow { grid-template-columns: 1fr 90px 1fr; grid-template-rows: auto auto; }
-  .aright { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: center; }
-  nav button { padding: 5px 9px; font-size: 0.75rem; }
+@media (max-width: 600px) {
+  /* header */
+  header { padding: 0 12px; }
+  .h-inner { height: auto; flex-wrap: wrap; padding: 10px 0; gap: 8px; }
+  .logo { font-size: 0.95rem; letter-spacing: 1px; }
+  nav { order: 3; width: 100%; gap: 2px; }
+  nav button { flex: 1; padding: 7px 4px; font-size: 0.72rem; text-align: center; }
+  .h-right { margin-left: auto; }
+  .session-txt { font-size: 0.7rem; }
+  .session-txt strong { display: block; }
+
+  /* main */
+  main { padding: 16px 10px; }
+  .ptitle { font-size: 1.1rem; margin-bottom: 16px; }
+  .card { padding: 14px 12px; }
+
+  /* ranking - esconde colunas menos importantes */
+  .rtable th:nth-child(4),
+  .rtable th:nth-child(5),
+  .rtable td:nth-child(4),
+  .rtable td:nth-child(5) { display: none; }
+  .rtable th { padding: 8px 8px; font-size: 0.65rem; }
+  .rtable td { padding: 10px 8px; font-size: 0.82rem; }
+  .rpts { font-size: 1rem; }
+  .rname { font-size: 0.85rem; }
+
+  /* filtros - scroll horizontal */
+  .filters { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .filters::-webkit-scrollbar { display: none; }
+  .fbtn { flex-shrink: 0; }
+
+  /* match cards */
+  .mc-body { grid-template-columns: 1fr 90px 1fr; gap: 4px; padding: 10px 10px; }
+  .tname { font-size: 0.8rem; }
+  .tflag { font-size: 1.1rem; }
+  .sbox { width: 34px; height: 34px; font-size: 1.1rem; }
+  .sinput { width: 34px; height: 34px; font-size: 1rem; }
+  .mc-foot { padding: 8px 10px; gap: 4px; }
+  .btag { font-size: 0.68rem; padding: 2px 6px; }
+  .mc-head { padding: 6px 10px; flex-wrap: wrap; gap: 2px; }
+  .mc-date { font-size: 0.65rem; text-align: right; }
+
+  /* apostas */
+  .arow {
+    grid-template-columns: 1fr 90px 1fr;
+    grid-template-rows: auto auto;
+    padding: 10px 10px;
+    gap: 6px;
+  }
+  .aright {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ateam-l, .ateam-r { font-size: 0.8rem; gap: 4px; }
+  .adate { font-size: 0.68rem; }
+
+  /* admin form */
+  .form-row { flex-direction: column; }
+  .inp { width: 100%; }
+  .btn-add { width: 100%; }
+  .pgrid { grid-template-columns: 1fr; }
+
+  /* modal */
+  .modal { padding: 20px 16px; }
+  .pind { width: 44px; height: 50px; font-size: 1.5rem; }
+  .pin-row { gap: 8px; }
+
+  /* toast */
+  #toast { bottom: 12px; right: 12px; left: 12px; text-align: center; }
 }
 </style>
 </head>
