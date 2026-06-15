@@ -363,6 +363,18 @@
     .tflag {
       font-size: 1.4rem;
       line-height: 1;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .tflag-img {
+      width: 24px;
+      height: 16px;
+      object-fit: cover;
+      border-radius: 2px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      vertical-align: middle;
     }
 
     .tname {
@@ -1091,7 +1103,7 @@
 
   <header>
     <div class="h-inner">
-      <div class="logo">Bolão <strong>dos UNK</strong></div>
+      <div class="logo">Bolão <strong>UNK</strong></div>
       <nav>
         <button id="nav-ranking" class="on" onclick="go('ranking')">Ranking</button>
         <button id="nav-jogos" onclick="go('jogos')">Jogos</button>
@@ -1214,11 +1226,12 @@
     var session = null;
     var allMatches = [], allBets = [], allParticipants = [];
     var jogosFilter = 'Todos', apostasFilter = 'Todos';
+    var countriesMap = {};
 
     // ─── Team translations & flags ────────────────────────────────────────────────
     var NAMES = {
       'Mexico': 'México', 'South Africa': 'África do Sul', 'South Korea': 'Coreia do Sul',
-      'Czech Republic': 'Rep. Tcheca', 'Canada': 'Canadá', 'Bosnia & Herzegovina': 'Bósnia',
+      'Czech Republic': 'República Tcheca', 'Canada': 'Canadá', 'Bosnia & Herzegovina': 'Bósnia',
       'Qatar': 'Catar', 'Switzerland': 'Suíça', 'Brazil': 'Brasil', 'Morocco': 'Marrocos',
       'Haiti': 'Haiti', 'Scotland': 'Escócia', 'USA': 'EUA', 'Paraguay': 'Paraguai',
       'Australia': 'Austrália', 'Turkey': 'Turquia', 'Germany': 'Alemanha',
@@ -1232,22 +1245,13 @@
       'Colombia': 'Colômbia', 'England': 'Inglaterra', 'Croatia': 'Croácia',
       'Ghana': 'Gana', 'Panama': 'Panamá', 'Curaçao': 'Curaçao',
     };
-    var FLAGS = {
-      'Mexico': '🇲🇽', 'South Africa': '🇿🇦', 'South Korea': '🇰🇷', 'Czech Republic': '🇨🇿',
-      'Canada': '🇨🇦', 'Bosnia & Herzegovina': '🇧🇦', 'Qatar': '🇶🇦', 'Switzerland': '🇨🇭',
-      'Brazil': '🇧🇷', 'Morocco': '🇲🇦', 'Haiti': '🇭🇹', 'Scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
-      'USA': '🇺🇸', 'Paraguay': '🇵🇾', 'Australia': '🇦🇺', 'Turkey': '🇹🇷',
-      'Germany': '🇩🇪', 'Ivory Coast': '🇨🇮', 'Ecuador': '🇪🇨', 'Netherlands': '🇳🇱',
-      'Japan': '🇯🇵', 'Sweden': '🇸🇪', 'Tunisia': '🇹🇳', 'Belgium': '🇧🇪',
-      'Egypt': '🇪🇬', 'Iran': '🇮🇷', 'New Zealand': '🇳🇿', 'Spain': '🇪🇸',
-      'Cape Verde': '🇨🇻', 'Saudi Arabia': '🇸🇦', 'Uruguay': '🇺🇾', 'France': '🇫🇷',
-      'Senegal': '🇸🇳', 'Iraq': '🇮🇶', 'Norway': '🇳🇴', 'Argentina': '🇦🇷',
-      'Algeria': '🇩🇿', 'Austria': '🇦🇹', 'Jordan': '🇯🇴', 'Portugal': '🇵🇹',
-      'DR Congo': '🇨🇩', 'Uzbekistan': '🇺🇿', 'Colombia': '🇨🇴', 'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
-      'Croatia': '🇭🇷', 'Ghana': '🇬🇭', 'Panama': '🇵🇦', 'Curaçao': '🏝️',
-    };
     function tn(t) { return NAMES[t] || t; }
-    function fl(t) { return FLAGS[t] || ''; }
+    function fl(t) {
+      var ptName = NAMES[t] || t;
+      var code = countriesMap[ptName.toLowerCase()];
+      if (!code) return '';
+      return '<img src="https://flagcdn.com/' + code.toLowerCase() + '.svg" class="tflag-img" alt="' + t + '">';
+    }
 
     // ─── Toast ────────────────────────────────────────────────────────────────────
     function toast(msg, type) {
@@ -1749,9 +1753,16 @@
     restoreSession();
     updateHeader();
 
-    // Pre-load matches so filters work on first render
-    apiFetch('GET', '/api/matches').then(function (data) {
-      allMatches = Array.isArray(data) ? data : [];
+    // Pre-load countries and matches so filters work on first render
+    Promise.all([
+      apiFetch('GET', '/api/countries'),
+      apiFetch('GET', '/api/matches')
+    ]).then(function (results) {
+      var countries = Array.isArray(results[0]) ? results[0] : [];
+      countries.forEach(function (c) {
+        countriesMap[c.name.toLowerCase()] = c.code;
+      });
+      allMatches = Array.isArray(results[1]) ? results[1] : [];
       loadRanking();
       // if session active, go to the right page
       if (session) {

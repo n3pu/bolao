@@ -104,6 +104,16 @@ module.exports = async function handler(req, res) {
 
   try {
 
+    // GET /countries
+    if (url === '/countries' && method === 'GET') {
+      try {
+        const countries = JSON.parse(fs.readFileSync(nodePath.join(__dirname, '..', 'data', 'countries.json'), 'utf8'));
+        return res.status(200).json(countries);
+      } catch (e) {
+        return res.status(500).json({ error: 'Erro ao carregar países: ' + e.message });
+      }
+    }
+
     // GET /matches
     if (url === '/matches' && method === 'GET') {
       const matches = loadMatches();
