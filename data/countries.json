@@ -1,0 +1,194 @@
+[
+  {
+    "code": "ZA",
+    "name": "África do Sul"
+  },
+  {
+    "code": "DE",
+    "name": "Alemanha"
+  },
+  {
+    "code": "DZ",
+    "name": "Argélia"
+  },
+  {
+    "code": "SA",
+    "name": "Arábia Saudita"
+  },
+  {
+    "code": "AR",
+    "name": "Argentina"
+  },
+  {
+    "code": "AU",
+    "name": "Austrália"
+  },
+  {
+    "code": "AT",
+    "name": "Áustria"
+  },
+  {
+    "code": "BE",
+    "name": "Bélgica"
+  },
+  {
+    "code": "BA",
+    "name": "Bósnia"
+  },
+  {
+    "code": "BR",
+    "name": "Brasil"
+  },
+  {
+    "code": "CV",
+    "name": "Cabo Verde"
+  },
+  {
+    "code": "CA",
+    "name": "Canadá"
+  },
+  {
+    "code": "QA",
+    "name": "Catar"
+  },
+  {
+    "code": "CO",
+    "name": "Colômbia"
+  },
+  {
+    "code": "KR",
+    "name": "Coreia do Sul"
+  },
+  {
+    "code": "CI",
+    "name": "Costa do Marfim"
+  },
+  {
+    "code": "HR",
+    "name": "Croácia"
+  },
+  {
+    "code": "CW",
+    "name": "Curaçao"
+  },
+  {
+    "code": "EG",
+    "name": "Egito"
+  },
+  {
+    "code": "EC",
+    "name": "Equador"
+  },
+  {
+    "code": "GB-SCT",
+    "name": "Escócia"
+  },
+  {
+    "code": "ES",
+    "name": "Espanha"
+  },
+  {
+    "code": "US",
+    "name": "EUA"
+  },
+  {
+    "code": "FR",
+    "name": "França"
+  },
+  {
+    "code": "GH",
+    "name": "Gana"
+  },
+  {
+    "code": "HT",
+    "name": "Haiti"
+  },
+  {
+    "code": "NL",
+    "name": "Holanda"
+  },
+  {
+    "code": "GB",
+    "name": "Inglaterra"
+  },
+  {
+    "code": "IR",
+    "name": "Irã"
+  },
+  {
+    "code": "IQ",
+    "name": "Iraque"
+  },
+  {
+    "code": "JP",
+    "name": "Japão"
+  },
+  {
+    "code": "JO",
+    "name": "Jordânia"
+  },
+  {
+    "code": "MA",
+    "name": "Marrocos"
+  },
+  {
+    "code": "MX",
+    "name": "México"
+  },
+  {
+    "code": "NO",
+    "name": "Noruega"
+  },
+  {
+    "code": "NZ",
+    "name": "Nova Zelândia"
+  },
+  {
+    "code": "PA",
+    "name": "Panamá"
+  },
+  {
+    "code": "PY",
+    "name": "Paraguai"
+  },
+  {
+    "code": "PT",
+    "name": "Portugal"
+  },
+  {
+    "code": "CD",
+    "name": "RD Congo"
+  },
+  {
+    "code": "CZ",
+    "name": "República Tcheca"
+  },
+  {
+    "code": "SN",
+    "name": "Senegal"
+  },
+  {
+    "code": "SE",
+    "name": "Suécia"
+  },
+  {
+    "code": "CH",
+    "name": "Suíça"
+  },
+  {
+    "code": "TN",
+    "name": "Tunísia"
+  },
+  {
+    "code": "TR",
+    "name": "Turquia"
+  },
+  {
+    "code": "UY",
+    "name": "Uruguai"
+  },
+  {
+    "code": "UZ",
+    "name": "Uzbequistão"
+  }
+]

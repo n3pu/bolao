@@ -26,12 +26,18 @@ async function initDB() {
       participant_id TEXT NOT NULL,
       match_id TEXT NOT NULL,
       score1 INTEGER, score2 INTEGER,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(participant_id, match_id)
     );
     CREATE TABLE IF NOT EXISTS results (
       match_id TEXT PRIMARY KEY, score1 INTEGER, score2 INTEGER
     );
   `);
+  // Ensure columns exist for older deployments
+  await pool.query(`ALTER TABLE bets ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;`)
+    .catch(err => console.log('created_at col:', err.message));
+  await pool.query(`ALTER TABLE participants ADD COLUMN IF NOT EXISTS phone TEXT;`)
+    .catch(err => console.log('phone col:', err.message));
   await pool.query(
     `INSERT INTO config (key, value) VALUES ('admin_pin', '2504') ON CONFLICT (key) DO NOTHING`
   );
@@ -104,6 +110,16 @@ module.exports = async function handler(req, res) {
 
   try {
 
+    // GET /countries
+    if (url === '/countries' && method === 'GET') {
+      try {
+        const countries = JSON.parse(fs.readFileSync(nodePath.join(__dirname, '..', 'data', 'countries.json'), 'utf8'));
+        return res.status(200).json(countries);
+      } catch (e) {
+        return res.status(500).json({ error: 'Erro ao carregar países: ' + e.message });
+      }
+    }
+
     // GET /matches
     if (url === '/matches' && method === 'GET') {
       const matches = loadMatches();
@@ -139,7 +155,7 @@ module.exports = async function handler(req, res) {
 
     // GET /participants
     if (url === '/participants' && method === 'GET') {
-      const { rows } = await pool.query('SELECT id, name FROM participants ORDER BY name');
+      const { rows } = await pool.query('SELECT id, name, phone FROM participants ORDER BY name');
       return res.status(200).json(rows);
     }
 
@@ -148,13 +164,14 @@ module.exports = async function handler(req, res) {
       const adminPin = await getAdminPin();
       if (String(req.headers['x-admin-pin']) !== adminPin)
         return res.status(401).json({ error: 'PIN de admin incorreto' });
-      const { name, pin } = body;
+      const { name, pin, phone } = body;
       if (!name?.trim()) return res.status(400).json({ error: 'Nome obrigatório' });
       if (!pin || String(pin).length < 4) return res.status(400).json({ error: 'PIN deve ter pelo menos 4 dígitos' });
       const exists = await pool.query('SELECT id FROM participants WHERE LOWER(name)=LOWER($1)', [name]);
       if (exists.rows.length) return res.status(400).json({ error: 'Participante já existe' });
       const id = uuidv4();
-      await pool.query('INSERT INTO participants (id,name,pin) VALUES ($1,$2,$3)', [id, name.trim(), String(pin)]);
+      const cleanPhone = phone ? String(phone).replace(/\D/g, '') : null;
+      await pool.query('INSERT INTO participants (id,name,pin,phone) VALUES ($1,$2,$3,$4)', [id, name.trim(), String(pin), cleanPhone || null]);
       return res.status(200).json({ id, name: name.trim() });
     }
 
@@ -169,12 +186,89 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
+    // PUT /participants/:id  (update name, phone, optionally pin)
+    if (delPart && method === 'PUT') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+      const id = delPart[1];
+      const { name, pin, phone } = body;
+      if (!name?.trim()) return res.status(400).json({ error: 'Nome obrigatório' });
+      const dup = await pool.query('SELECT id FROM participants WHERE LOWER(name)=LOWER($1) AND id!=$2', [name, id]);
+      if (dup.rows.length) return res.status(400).json({ error: 'Nome já existe' });
+      const cleanPhone = phone ? String(phone).replace(/\D/g, '') : null;
+      if (pin && String(pin).length >= 4) {
+        await pool.query('UPDATE participants SET name=$1, phone=$2, pin=$3 WHERE id=$4',
+          [name.trim(), cleanPhone || null, String(pin), id]);
+      } else {
+        await pool.query('UPDATE participants SET name=$1, phone=$2 WHERE id=$3',
+          [name.trim(), cleanPhone || null, id]);
+      }
+      return res.status(200).json({ ok: true });
+    }
+
+    // PUT /participants/:id/pin
+    const putPartPin = url.match(/^\/participants\/([^/]+)\/pin$/);
+    if (putPartPin && method === 'PUT') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+      const id = putPartPin[1];
+      const { pin } = body;
+      if (!pin || String(pin).length < 4) return res.status(400).json({ error: 'PIN deve ter pelo menos 4 dígitos' });
+      await pool.query('UPDATE participants SET pin=$1 WHERE id=$2', [String(pin), id]);
+      return res.status(200).json({ ok: true });
+    }
+
+    // PUT /participants/:id/phone
+    const putPartPhone = url.match(/^\/participants\/([^/]+)\/phone$/);
+    if (putPartPhone && method === 'PUT') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+      const id = putPartPhone[1];
+      const { phone } = body;
+      const cleanPhone = phone ? String(phone).replace(/\D/g, '') : null;
+      await pool.query('UPDATE participants SET phone=$1 WHERE id=$2', [cleanPhone || null, id]);
+      return res.status(200).json({ ok: true });
+    }
+
     // GET /bets
     if (url === '/bets' && method === 'GET') {
+      const adminPin = await getAdminPin();
+      const isAdmin = String(req.headers['x-admin-pin']) === adminPin;
+      
+      const pId = req.headers['x-participant-id'];
+      const pPin = req.headers['x-participant-pin'];
+      
+      let pValid = false;
+      if (pId && pPin) {
+        const pCheck = await pool.query('SELECT pin FROM participants WHERE id=$1', [pId]);
+        if (pCheck.rows.length && pCheck.rows[0].pin === String(pPin)) {
+          pValid = true;
+        }
+      }
+
       const { rows } = await pool.query(
-        'SELECT id, participant_id as "participantId", match_id as "matchId", score1, score2 FROM bets'
+        'SELECT id, participant_id as "participantId", match_id as "matchId", score1, score2, created_at as "createdAt" FROM bets'
       );
-      return res.status(200).json(rows);
+      
+      const maskedRows = rows.map(r => {
+        if (isAdmin || (pValid && r.participantId === pId)) {
+          return r;
+        } else {
+          return {
+            id: r.id,
+            participantId: r.participantId,
+            matchId: r.matchId,
+            score1: null,
+            score2: null,
+            createdAt: r.createdAt
+          };
+        }
+      });
+      
+      return res.status(200).json(maskedRows);
     }
 
     // POST /bets
@@ -193,8 +287,8 @@ module.exports = async function handler(req, res) {
 
       const id = uuidv4();
       await pool.query(
-        `INSERT INTO bets (id,participant_id,match_id,score1,score2) VALUES ($1,$2,$3,$4,$5)
-         ON CONFLICT (participant_id,match_id) DO UPDATE SET score1=$4,score2=$5,id=$1`,
+        `INSERT INTO bets (id,participant_id,match_id,score1,score2,created_at) VALUES ($1,$2,$3,$4,$5,CURRENT_TIMESTAMP)
+         ON CONFLICT (participant_id,match_id) DO UPDATE SET score1=$4,score2=$5,id=$1,created_at=CURRENT_TIMESTAMP`,
         [id, participantId, String(matchId), score1, score2]
       );
       return res.status(200).json({ ok: true });
@@ -208,7 +302,12 @@ module.exports = async function handler(req, res) {
       const resMap  = {};
       results.rows.forEach(r => { resMap[r.match_id] = r; });
       const ranking = parts.rows.map(p => {
-        const myBets = bets.rows.filter(b => b.participant_id === p.id);
+        // Only count bets for matches on or after Brazil's first game (2026-06-20T01:00:00Z)
+        const myBets = bets.rows.filter(b => {
+          if (b.participant_id !== p.id) return false;
+          const m = loadMatches().find(x => String(x.id) === String(b.match_id));
+          return m && m.datetime >= '2026-06-20T01:00:00Z';
+        });
         let points = 0, exact = 0, outcome = 0;
         myBets.forEach(b => {
           const r = resMap[b.match_id];
@@ -248,6 +347,50 @@ module.exports = async function handler(req, res) {
       await pool.query(`UPDATE config SET value=$1 WHERE key='admin_pin'`, [String(newPin)]);
       return res.status(200).json({ ok: true });
     }
+
+    // GET /config/arrecadado
+    if (url === '/config/arrecadado' && method === 'GET') {
+      const r = await pool.query(`SELECT value FROM config WHERE key = 'arrecadado'`);
+      const val = r.rows[0]?.value || '0';
+      return res.status(200).json({ value: val });
+    }
+
+    // PUT /config/arrecadado
+    if (url === '/config/arrecadado' && method === 'PUT') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+      const { value } = body;
+      const parsedValue = parseFloat(value) || 0;
+      await pool.query(
+        `INSERT INTO config (key, value) VALUES ('arrecadado', $1)
+         ON CONFLICT (key) DO UPDATE SET value=$1`,
+        [String(parsedValue)]
+      );
+      return res.status(200).json({ ok: true });
+    }
+
+    // GET /config/cup_finished
+    if (url === '/config/cup_finished' && method === 'GET') {
+      const r = await pool.query(`SELECT value FROM config WHERE key = 'cup_finished'`);
+      const val = r.rows[0]?.value || 'false';
+      return res.status(200).json({ value: val });
+    }
+
+    // PUT /config/cup_finished
+    if (url === '/config/cup_finished' && method === 'PUT') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+      const { value } = body;
+      await pool.query(
+        `INSERT INTO config (key, value) VALUES ('cup_finished', $1)
+         ON CONFLICT (key) DO UPDATE SET value=$1`,
+        [String(value)]
+      );
+      return res.status(200).json({ ok: true });
+    }
+
 
     return res.status(404).json({ error: 'Rota não encontrada: ' + url });
 
