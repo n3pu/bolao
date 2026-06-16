@@ -2526,6 +2526,19 @@
         </div>
       </div>
 
+      <div class="card">
+        <div class="sub-title">Importação de Resultados (FIFA)</div>
+        <div class="form-row" style="align-items: center; gap: 12px; flex-wrap: wrap;">
+          <span style="font-size: 0.85rem; color: var(--muted-foreground); flex: 1; min-width: 250px;">
+            Busque os resultados oficiais dos jogos finalizados diretamente do site da FIFA para atualizar o bolão.
+          </span>
+          <button class="btn-add" id="btn-scrape-fifa" onclick="triggerScrape()" style="background: var(--primary); border-color: var(--primary-hover); color: #fff;">
+            <i data-lucide="refresh-cw" style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i>
+            Buscar dados
+          </button>
+        </div>
+      </div>
+
       <div class="card" id="cup-status-card">
         <div class="sub-title">Finalização Oficial do Bolão UNK</div>
         <div class="form-row" style="align-items: center; gap: 12px; flex-wrap: wrap;">
@@ -2611,6 +2624,26 @@
 
       <div class="mbtns" style="margin-top: 15px;">
         <button class="mbtn secondary" onclick="closeSimulator()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRAPE DIFF MODAL -->
+  <div class="overlay hide" id="scrape-diff-overlay">
+    <div class="modal large">
+      <h2>Importar Resultados da FIFA</h2>
+      <div class="modal-sub">Resultados de partidas finalizadas no site da FIFA que diferem do nosso banco de dados.</div>
+
+      <div class="sim-matches-list" id="scrape-diff-container" style="max-height: 320px;">
+        <!-- Scraped differences will go here -->
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 20px; gap: 10px; flex-wrap: wrap;">
+        <button class="btn-save" id="btn-import-all-scrape" onclick="importAllScraped()" style="background: var(--primary); border-color: var(--primary-hover); padding: 10px 20px; font-size: 0.9rem;">
+          <i data-lucide="check-check" style="width:14px;height:14px;margin-right:4px;display:inline-block;vertical-align:-2px"></i>
+          Importar Todos
+        </button>
+        <button class="mbtn secondary" onclick="closeScrapeDiff()" style="flex:none; width: 120px; margin: 0;">Fechar</button>
       </div>
     </div>
   </div>
@@ -4476,6 +4509,170 @@
       }
     }
 
+    // ─── FIFA Scraper Integration ──────────────────────────────────────────────────
+    var currentScrapedDiff = [];
+
+    function triggerScrape() {
+      var btn = document.getElementById('btn-scrape-fifa');
+      var origHtml = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i>Buscando...';
+        lucide.createIcons();
+      }
+
+      apiFetch('GET', '/api/admin/scrape')
+        .then(function (r) {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            lucide.createIcons();
+          }
+          if (r && r.error) {
+            toast(r.error, 'err');
+            return;
+          }
+          if (!r.diff || r.diff.length === 0) {
+            toast('Todos os placares estão atualizados!');
+            return;
+          }
+          renderScrapeDiff(r.diff);
+        })
+        .catch(function () {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            lucide.createIcons();
+          }
+          toast('Erro ao buscar dados.', 'err');
+        });
+    }
+
+    function renderScrapeDiff(diffData) {
+      currentScrapedDiff = diffData;
+      var container = document.getElementById('scrape-diff-container');
+      if (!container) return;
+
+      container.innerHTML = diffData.map(function (diff) {
+        return '<div class="sim-match-item" id="scrape-row-' + diff.matchId + '">'
+          + '<div class="sim-match-teams" style="gap: 16px;">'
+          + '<span class="sim-team-l">' + fl(diff.team1) + ' ' + tn(diff.team1) + '</span>'
+          + '<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">'
+          + '<span class="badge-score" style="background:var(--input); border:1px solid var(--border); padding:4px 12px; border-radius:6px; font-family:\'Oswald\',sans-serif; font-size:1.1rem; font-weight:700; color:var(--gold);">'
+          + diff.scrapedScore1 + ' – ' + diff.scrapedScore2
+          + '</span>'
+          + '<span style="font-size:0.7rem; color:var(--muted-foreground);">' + diff.date + '</span>'
+          + '</div>'
+          + '<span class="sim-team-r">' + tn(diff.team2) + ' ' + fl(diff.team2) + '</span>'
+          + '</div>'
+          + '<div style="margin-left: 16px;">'
+          + '<button class="btn-save" id="btn-import-scrape-' + diff.matchId + '" onclick="acceptScrapedResult(\'' + diff.matchId + '\', ' + diff.scrapedScore1 + ', ' + diff.scrapedScore2 + ')" style="font-size: 0.8rem; padding: 6px 12px;">'
+          + 'Importar'
+          + '</button>'
+          + '</div>'
+          + '</div>';
+      }).join('');
+
+      lucide.createIcons();
+
+      var overlay = document.getElementById('scrape-diff-overlay');
+      if (overlay) {
+        overlay.classList.remove('hide');
+      }
+    }
+
+    function closeScrapeDiff() {
+      var overlay = document.getElementById('scrape-diff-overlay');
+      if (overlay) {
+        overlay.classList.add('hide');
+      }
+    }
+
+    function acceptScrapedResult(matchId, score1, score2) {
+      var btn = document.getElementById('btn-import-scrape-' + matchId);
+      var origHtml = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width: 10px; height: 10px; margin-right: 4px; display: inline-block;"></i>';
+        lucide.createIcons();
+      }
+
+      apiFetch('PUT', '/api/matches/' + matchId + '/result', { score1: score1, score2: score2 }, { 'x-admin-pin': session.pin })
+        .then(function (r) {
+          if (r && r.error) {
+            toast(r.error, 'err');
+            if (btn) {
+              btn.disabled = false;
+              btn.innerHTML = origHtml;
+              lucide.createIcons();
+            }
+            return;
+          }
+          toast('Placar importado com sucesso!');
+          
+          currentScrapedDiff = currentScrapedDiff.filter(function (d) { return String(d.matchId) !== String(matchId); });
+          
+          var row = document.getElementById('scrape-row-' + matchId);
+          if (row) {
+            row.parentNode.removeChild(row);
+          }
+
+          if (currentScrapedDiff.length === 0) {
+            closeScrapeDiff();
+          }
+          loadJogosSilently();
+        })
+        .catch(function () {
+          toast('Erro ao importar placar.', 'err');
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            lucide.createIcons();
+          }
+        });
+    }
+
+    function importAllScraped() {
+      if (currentScrapedDiff.length === 0) return;
+      
+      var btn = document.getElementById('btn-import-all-scrape');
+      var origHtml = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width:14px;height:14px;margin-right:4px;display:inline-block;vertical-align:-2px"></i>Importando...';
+        lucide.createIcons();
+      }
+
+      var promises = currentScrapedDiff.map(function (diff) {
+        return apiFetch('PUT', '/api/matches/' + diff.matchId + '/result', 
+          { score1: diff.scrapedScore1, score2: diff.scrapedScore2 }, 
+          { 'x-admin-pin': session.pin }
+        );
+      });
+
+      Promise.all(promises)
+        .then(function (results) {
+          var errors = results.filter(function (res) { return res && res.error; });
+          if (errors.length > 0) {
+            toast('Importado com alguns erros.', 'err');
+          } else {
+            toast('Todos os resultados foram importados!');
+          }
+          
+          currentScrapedDiff = [];
+          closeScrapeDiff();
+          loadJogosSilently();
+        })
+        .catch(function () {
+          toast('Erro ao importar todos.', 'err');
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            lucide.createIcons();
+          }
+        });
+    }
+
     // ─── Init ─────────────────────────────────────────────────────────────────────
     restoreSession();
     updateHeader();
@@ -4523,6 +4720,13 @@
     document.getElementById('overlay').addEventListener('click', function (e) {
       if (e.target === e.currentTarget) closeLogin();
     });
+
+    var scrapeOverlay = document.getElementById('scrape-diff-overlay');
+    if (scrapeOverlay) {
+      scrapeOverlay.addEventListener('click', function (e) {
+        if (e.target === e.currentTarget) closeScrapeDiff();
+      });
+    }
 
     [0, 1, 2, 3].forEach(function (i) {
       document.getElementById('p' + i).addEventListener('keydown', function (e) {

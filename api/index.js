@@ -13,6 +13,29 @@ const pool = new Pool({
 });
 
 
+const REVERSE_NAMES = {
+  'México': 'Mexico', 'África do Sul': 'South Africa', 'Coreia do Sul': 'South Korea',
+  'República Tcheca': 'Czech Republic', 'Canadá': 'Canada', 'Bósnia': 'Bosnia & Herzegovina',
+  'Catar': 'Qatar', 'Suíça': 'Switzerland', 'Brasil': 'Brazil', 'Marrocos': 'Morocco',
+  'Haiti': 'Haiti', 'Escócia': 'Scotland', 'EUA': 'USA', 'Paraguai': 'Paraguay',
+  'Austrália': 'Australia', 'Turquia': 'Turkey', 'Alemanha': 'Germany',
+  'Costa do Marfim': 'Ivory Coast', 'Equador': 'Ecuador', 'Holanda': 'Netherlands',
+  'Japão': 'Japan', 'Suécia': 'Sweden', 'Tunísia': 'Tunisia', 'Bélgica': 'Belgium',
+  'Egito': 'Egypt', 'Irã': 'Iran', 'Nova Zelândia': 'New Zealand', 'Espanha': 'Spain',
+  'Cabo Verde': 'Cape Verde', 'Arábia Saudita': 'Saudi Arabia', 'Uruguai': 'Uruguay',
+  'França': 'France', 'Senegal': 'Senegal', 'Iraque': 'Iraq', 'Noruega': 'Norway',
+  'Argentina': 'Argentina', 'Argélia': 'Algeria', 'Áustria': 'Austria', 'Jordânia': 'Jordan',
+  'Portugal': 'Portugal', 'RD Congo': 'DR Congo', 'Uzbequistão': 'Uzbekistan',
+  'Colômbia': 'Colombia', 'Inglaterra': 'England', 'Croácia': 'Croatia',
+  'Gana': 'Ghana', 'Panamá': 'Panama', 'Curaçao': 'Curaçao'
+};
+
+function toEnglishName(name) {
+  if (!name) return null;
+  const clean = name.trim();
+  return REVERSE_NAMES[clean] || clean;
+}
+
 async function initDB() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS config (
@@ -444,6 +467,150 @@ module.exports = async function handler(req, res) {
         [String(value)]
       );
       return res.status(200).json({ ok: true });
+    }
+
+    // GET /admin/scrape
+    if (url === '/admin/scrape' && method === 'GET') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+
+      let browser;
+      try {
+        const { chromium } = require('playwright');
+        browser = await chromium.launch({ headless: true });
+        const page = await browser.newPage();
+        await page.goto(
+          'https://www.fifa.com/pt/tournaments/mens/worldcup/canadamexicousa2026/scores-fixtures?country=BR&wtw-filter=ALL',
+          { waitUntil: 'domcontentloaded', timeout: 120000 }
+        );
+        await new Promise(resolve => setTimeout(resolve, 5000));
+
+        const scrapedMatches = await page.evaluate(() => {
+          const resultado = [];
+          const headers = document.querySelectorAll('[class^="matches-container_header"]');
+          headers.forEach(header => {
+            const data = header.querySelector('[class^="matches-container_title"]')?.textContent?.trim() || '';
+            let node = header.nextElementSibling;
+            while (node) {
+              const className = String(node.className || '');
+              if (className.startsWith('matches-container_header')) {
+                break;
+              }
+              if (className.startsWith('matches-container_viewGroups')) {
+                node = node.nextElementSibling;
+                continue;
+              }
+              const links = node.querySelectorAll('a');
+              links.forEach(link => {
+                const body = link.querySelector('[class^="match-row_matchRowBody"]');
+                if (!body) return;
+                const times = body.querySelectorAll('[class^="match-row_team"]');
+                if (times.length < 2) return;
+
+                const extrairSelecao = (container) => {
+                  const sigla = container.querySelector('[class^="team-abbreviations_container"]')?.textContent?.trim() || null;
+                  const spans = [...container.querySelectorAll('span')];
+                  let nome = null;
+                  for (const span of spans) {
+                    const texto = span.textContent.trim();
+                    if (texto && texto !== sigla && texto.length > 3) {
+                      nome = texto;
+                      break;
+                    }
+                  }
+                  return { nome, sigla };
+                };
+
+                const selecaoA = extrairSelecao(times[0]);
+                const selecaoB = extrairSelecao(times[1]);
+                const placares = body.querySelectorAll('[class^="match-row_score"]');
+                const status = body.querySelector('[class^="match-row_status"]');
+                const horario = body.querySelector('[class^="match-row_matchTime"]');
+
+                resultado.push({
+                  data,
+                  selecaoA,
+                  selecaoB,
+                  placar: placares.length >= 2 ? {
+                    selecaoA: placares[0].textContent.trim(),
+                    selecaoB: placares[1].textContent.trim()
+                  } : null,
+                  horario: placares.length === 0 ? (horario?.textContent?.trim() || null) : null,
+                  status: status?.textContent?.trim() || null,
+                  resumo: link.href
+                });
+              });
+              node = node.nextElementSibling;
+            }
+          });
+          return resultado;
+        });
+
+        // Write to public directory
+        const publicDir = nodePath.join(__dirname, '..', 'public');
+        if (!fs.existsSync(publicDir)) {
+          fs.mkdirSync(publicDir, { recursive: true });
+        }
+        fs.writeFileSync(nodePath.join(publicDir, 'fifa-jogos.json'), JSON.stringify(scrapedMatches, null, 2), 'utf8');
+
+        // Load our matches and results
+        const allMatches = loadMatches();
+        const resultsRes = await pool.query('SELECT match_id, score1, score2 FROM results');
+        const currentResults = resultsRes.rows;
+
+        // Compare
+        const diff = [];
+        scrapedMatches.forEach(sm => {
+          if (!sm.placar) return;
+          const engA = toEnglishName(sm.selecaoA.nome);
+          const engB = toEnglishName(sm.selecaoB.nome);
+          if (!engA || !engB) return;
+
+          const m = allMatches.find(x => {
+            const x1 = String(x.team1).toLowerCase();
+            const x2 = String(x.team2).toLowerCase();
+            const a = String(engA).toLowerCase();
+            const b = String(engB).toLowerCase();
+            return (x1 === a && x2 === b) || (x1 === b && x2 === a);
+          });
+
+          if (!m) return;
+
+          const hasRes = currentResults.find(r => String(r.match_id) === String(m.id));
+          const hasScore = hasRes && hasRes.score1 !== null && hasRes.score2 !== null;
+
+          if (!hasScore) {
+            let score1 = parseInt(sm.placar.selecaoA);
+            let score2 = parseInt(sm.placar.selecaoB);
+            if (String(m.team1).toLowerCase() !== engA.toLowerCase()) {
+              score1 = parseInt(sm.placar.selecaoB);
+              score2 = parseInt(sm.placar.selecaoA);
+            }
+
+            if (!isNaN(score1) && !isNaN(score2)) {
+              diff.push({
+                matchId: m.id,
+                team1: m.team1,
+                team2: m.team2,
+                scrapedScore1: score1,
+                scrapedScore2: score2,
+                date: sm.data,
+                time: sm.horario || ''
+              });
+            }
+          }
+        });
+
+        return res.status(200).json({ diff });
+      } catch (error) {
+        console.error('Scraper error:', error.message);
+        return res.status(500).json({ error: 'Erro ao executar o scanner: ' + error.message });
+      } finally {
+        if (browser) {
+          await browser.close();
+        }
+      }
     }
 
 
