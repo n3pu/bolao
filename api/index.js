@@ -19,15 +19,17 @@ async function initDB() {
       key TEXT PRIMARY KEY, value TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS participants (
-      id TEXT PRIMARY KEY, name TEXT NOT NULL, pin TEXT NOT NULL
+      id TEXT PRIMARY KEY, name TEXT NOT NULL, pin TEXT NOT NULL,
+      phone TEXT, cotas INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE IF NOT EXISTS bets (
       id TEXT PRIMARY KEY,
       participant_id TEXT NOT NULL,
       match_id TEXT NOT NULL,
       score1 INTEGER, score2 INTEGER,
+      cota_index INTEGER NOT NULL DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(participant_id, match_id)
+      UNIQUE(participant_id, match_id, cota_index)
     );
     CREATE TABLE IF NOT EXISTS results (
       match_id TEXT PRIMARY KEY, score1 INTEGER, score2 INTEGER
@@ -38,8 +40,27 @@ async function initDB() {
     .catch(err => console.log('created_at col:', err.message));
   await pool.query(`ALTER TABLE participants ADD COLUMN IF NOT EXISTS phone TEXT;`)
     .catch(err => console.log('phone col:', err.message));
+  await pool.query(`ALTER TABLE participants ADD COLUMN IF NOT EXISTS cotas INTEGER NOT NULL DEFAULT 1;`)
+    .catch(err => console.log('cotas col:', err.message));
+  await pool.query(`ALTER TABLE bets ADD COLUMN IF NOT EXISTS cota_index INTEGER NOT NULL DEFAULT 0;`)
+    .catch(err => console.log('cota_index col:', err.message));
+  
+  try {
+    await pool.query(`ALTER TABLE bets DROP CONSTRAINT IF EXISTS bets_participant_id_match_id_key;`);
+  } catch (e) {
+    console.log('unique constraint drop error:', e.message);
+  }
+  try {
+    await pool.query(`ALTER TABLE bets ADD CONSTRAINT bets_participant_id_match_id_cota_index_key UNIQUE (participant_id, match_id, cota_index);`);
+  } catch (e) {
+    // Expected to fail if already exists
+  }
+
   await pool.query(
     `INSERT INTO config (key, value) VALUES ('admin_pin', '2504') ON CONFLICT (key) DO NOTHING`
+  );
+  await pool.query(
+    `INSERT INTO config (key, value) VALUES ('valor_cota', '25') ON CONFLICT (key) DO NOTHING`
   );
 }
 
@@ -155,7 +176,7 @@ module.exports = async function handler(req, res) {
 
     // GET /participants
     if (url === '/participants' && method === 'GET') {
-      const { rows } = await pool.query('SELECT id, name, phone FROM participants ORDER BY name');
+      const { rows } = await pool.query('SELECT id, name, phone, cotas FROM participants ORDER BY name');
       return res.status(200).json(rows);
     }
 
@@ -164,15 +185,17 @@ module.exports = async function handler(req, res) {
       const adminPin = await getAdminPin();
       if (String(req.headers['x-admin-pin']) !== adminPin)
         return res.status(401).json({ error: 'PIN de admin incorreto' });
-      const { name, pin, phone } = body;
+      const { name, pin, phone, cotas } = body;
       if (!name?.trim()) return res.status(400).json({ error: 'Nome obrigatório' });
       if (!pin || String(pin).length < 4) return res.status(400).json({ error: 'PIN deve ter pelo menos 4 dígitos' });
       const exists = await pool.query('SELECT id FROM participants WHERE LOWER(name)=LOWER($1)', [name]);
       if (exists.rows.length) return res.status(400).json({ error: 'Participante já existe' });
       const id = uuidv4();
       const cleanPhone = phone ? String(phone).replace(/\D/g, '') : null;
-      await pool.query('INSERT INTO participants (id,name,pin,phone) VALUES ($1,$2,$3,$4)', [id, name.trim(), String(pin), cleanPhone || null]);
-      return res.status(200).json({ id, name: name.trim() });
+      let cotasVal = parseInt(cotas !== undefined ? cotas : 1);
+      if (isNaN(cotasVal) || cotasVal < 0) cotasVal = 1;
+      await pool.query('INSERT INTO participants (id,name,pin,phone,cotas) VALUES ($1,$2,$3,$4,$5)', [id, name.trim(), String(pin), cleanPhone || null, cotasVal]);
+      return res.status(200).json({ id, name: name.trim(), cotas: cotasVal });
     }
 
     // DELETE /participants/:id
@@ -186,23 +209,36 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    // PUT /participants/:id  (update name, phone, optionally pin)
+    // PUT /participants/:id  (update name, phone, optionally pin/cotas)
     if (delPart && method === 'PUT') {
       const adminPin = await getAdminPin();
       if (String(req.headers['x-admin-pin']) !== adminPin)
         return res.status(401).json({ error: 'PIN de admin incorreto' });
       const id = delPart[1];
-      const { name, pin, phone } = body;
+      const { name, pin, phone, cotas } = body;
       if (!name?.trim()) return res.status(400).json({ error: 'Nome obrigatório' });
       const dup = await pool.query('SELECT id FROM participants WHERE LOWER(name)=LOWER($1) AND id!=$2', [name, id]);
       if (dup.rows.length) return res.status(400).json({ error: 'Nome já existe' });
       const cleanPhone = phone ? String(phone).replace(/\D/g, '') : null;
+      let cotasVal = cotas !== undefined ? parseInt(cotas) : null;
+      if (cotasVal !== null && (isNaN(cotasVal) || cotasVal < 0)) cotasVal = 1;
+      
       if (pin && String(pin).length >= 4) {
-        await pool.query('UPDATE participants SET name=$1, phone=$2, pin=$3 WHERE id=$4',
-          [name.trim(), cleanPhone || null, String(pin), id]);
+        if (cotasVal !== null) {
+          await pool.query('UPDATE participants SET name=$1, phone=$2, pin=$3, cotas=$4 WHERE id=$5',
+            [name.trim(), cleanPhone || null, String(pin), cotasVal, id]);
+        } else {
+          await pool.query('UPDATE participants SET name=$1, phone=$2, pin=$3 WHERE id=$4',
+            [name.trim(), cleanPhone || null, String(pin), id]);
+        }
       } else {
-        await pool.query('UPDATE participants SET name=$1, phone=$2 WHERE id=$3',
-          [name.trim(), cleanPhone || null, id]);
+        if (cotasVal !== null) {
+          await pool.query('UPDATE participants SET name=$1, phone=$2, cotas=$3 WHERE id=$4',
+            [name.trim(), cleanPhone || null, cotasVal, id]);
+        } else {
+          await pool.query('UPDATE participants SET name=$1, phone=$2 WHERE id=$3',
+            [name.trim(), cleanPhone || null, id]);
+        }
       }
       return res.status(200).json({ ok: true });
     }
@@ -250,7 +286,7 @@ module.exports = async function handler(req, res) {
       }
 
       const { rows } = await pool.query(
-        'SELECT id, participant_id as "participantId", match_id as "matchId", score1, score2, created_at as "createdAt" FROM bets'
+        'SELECT id, participant_id as "participantId", match_id as "matchId", score1, score2, cota_index as "cotaIndex", created_at as "createdAt" FROM bets'
       );
       
       const maskedRows = rows.map(r => {
@@ -261,6 +297,7 @@ module.exports = async function handler(req, res) {
             id: r.id,
             participantId: r.participantId,
             matchId: r.matchId,
+            cotaIndex: r.cotaIndex,
             score1: null,
             score2: null,
             createdAt: r.createdAt
@@ -273,11 +310,17 @@ module.exports = async function handler(req, res) {
 
     // POST /bets
     if (url === '/bets' && method === 'POST') {
-      const { participantId, matchId, score1, score2 } = body;
+      const { participantId, matchId, score1, score2, cotaIndex } = body;
       const pin = req.headers['x-participant-pin'];
-      const p = await pool.query('SELECT pin FROM participants WHERE id=$1', [participantId]);
+      const p = await pool.query('SELECT pin, cotas FROM participants WHERE id=$1', [participantId]);
       if (!p.rows.length) return res.status(404).json({ error: 'Participante não encontrado' });
       if (p.rows[0].pin !== String(pin)) return res.status(401).json({ error: 'PIN incorreto' });
+
+      const maxCotas = p.rows[0].cotas;
+      const idx = parseInt(cotaIndex !== undefined ? cotaIndex : 0);
+      if (idx < 0 || idx >= maxCotas) {
+        return res.status(400).json({ error: 'Índice de cota inválido para este participante' });
+      }
 
       // Block bets once the match has started
       const match = loadMatches().find(m => m.id === String(matchId));
@@ -287,16 +330,16 @@ module.exports = async function handler(req, res) {
 
       const id = uuidv4();
       await pool.query(
-        `INSERT INTO bets (id,participant_id,match_id,score1,score2,created_at) VALUES ($1,$2,$3,$4,$5,CURRENT_TIMESTAMP)
-         ON CONFLICT (participant_id,match_id) DO UPDATE SET score1=$4,score2=$5,id=$1,created_at=CURRENT_TIMESTAMP`,
-        [id, participantId, String(matchId), score1, score2]
+        `INSERT INTO bets (id,participant_id,match_id,score1,score2,cota_index,created_at) VALUES ($1,$2,$3,$4,$5,$6,CURRENT_TIMESTAMP)
+         ON CONFLICT (participant_id,match_id,cota_index) DO UPDATE SET score1=$4,score2=$5,id=$1,created_at=CURRENT_TIMESTAMP`,
+        [id, participantId, String(matchId), score1, score2, idx]
       );
       return res.status(200).json({ ok: true });
     }
 
     // GET /ranking
     if (url === '/ranking' && method === 'GET') {
-      const parts   = await pool.query('SELECT id, name FROM participants ORDER BY name');
+      const parts   = await pool.query('SELECT id, name, cotas FROM participants ORDER BY name');
       const bets    = await pool.query('SELECT participant_id, match_id, score1, score2 FROM bets');
       const results = await pool.query('SELECT match_id, score1, score2 FROM results');
       const resMap  = {};
@@ -314,7 +357,7 @@ module.exports = async function handler(req, res) {
           const pts = r ? calcScore(b.score1, b.score2, r.score1, r.score2) : 0;
           points += pts; if (pts === 3) exact++; if (pts === 1) outcome++;
         });
-        return { id: p.id, name: p.name, points, exact, outcome, betted: myBets.length };
+        return { id: p.id, name: p.name, cotas: p.cotas, points, exact, outcome, betted: myBets.length };
       });
       ranking.sort((a, b) => b.points - a.points || b.exact - a.exact);
       return res.status(200).json(ranking);
@@ -323,10 +366,10 @@ module.exports = async function handler(req, res) {
     // POST /auth/participant
     if (url === '/auth/participant' && method === 'POST') {
       const { participantId, pin } = body;
-      const r = await pool.query('SELECT id, name, pin FROM participants WHERE id=$1', [participantId]);
+      const r = await pool.query('SELECT id, name, pin, cotas FROM participants WHERE id=$1', [participantId]);
       if (!r.rows.length) return res.status(404).json({ error: 'Participante não encontrado' });
       if (r.rows[0].pin !== String(pin)) return res.status(401).json({ error: 'PIN incorreto' });
-      return res.status(200).json({ ok: true, id: r.rows[0].id, name: r.rows[0].name });
+      return res.status(200).json({ ok: true, id: r.rows[0].id, name: r.rows[0].name, cotas: r.rows[0].cotas });
     }
 
     // POST /auth/admin
@@ -348,14 +391,26 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    // GET /config/arrecadado
+    // GET /config/arrecadado (Dynamically calculated based on user cotas sum * valor_cota)
     if (url === '/config/arrecadado' && method === 'GET') {
-      const r = await pool.query(`SELECT value FROM config WHERE key = 'arrecadado'`);
-      const val = r.rows[0]?.value || '0';
-      return res.status(200).json({ value: val });
+      const sumRes = await pool.query('SELECT SUM(cotas) as total_cotas FROM participants');
+      const totalCotas = parseInt(sumRes.rows[0]?.total_cotas || 0);
+
+      const cotaRes = await pool.query(`SELECT value FROM config WHERE key = 'valor_cota'`);
+      const valorCota = parseFloat(cotaRes.rows[0]?.value || '25');
+
+      const val = totalCotas * valorCota;
+      return res.status(200).json({ value: String(val) });
     }
 
-    // PUT /config/arrecadado
+    // GET /config/valor_cota
+    if (url === '/config/valor_cota' && method === 'GET') {
+      const cotaRes = await pool.query(`SELECT value FROM config WHERE key = 'valor_cota'`);
+      const valorCota = parseFloat(cotaRes.rows[0]?.value || '25');
+      return res.status(200).json({ value: String(valorCota) });
+    }
+
+    // PUT /config/arrecadado (Actually updates the valor_cota option)
     if (url === '/config/arrecadado' && method === 'PUT') {
       const adminPin = await getAdminPin();
       if (String(req.headers['x-admin-pin']) !== adminPin)
@@ -363,7 +418,7 @@ module.exports = async function handler(req, res) {
       const { value } = body;
       const parsedValue = parseFloat(value) || 0;
       await pool.query(
-        `INSERT INTO config (key, value) VALUES ('arrecadado', $1)
+        `INSERT INTO config (key, value) VALUES ('valor_cota', $1)
          ON CONFLICT (key) DO UPDATE SET value=$1`,
         [String(parsedValue)]
       );
