@@ -2039,6 +2039,29 @@
       height: 100%;
       border: none;
     }
+
+    .btn-penalty-winner {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted-foreground);
+      border-radius: 4px;
+      padding: 4px 10px;
+      cursor: pointer;
+      font-size: 0.72rem;
+      font-family: inherit;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .btn-penalty-winner:hover {
+      color: var(--foreground);
+      border-color: var(--muted-foreground);
+    }
+    .btn-penalty-winner.active {
+      background: var(--gold);
+      color: #000;
+      border-color: var(--gold);
+      font-weight: 600;
+    }
   </style>
 </head>
 
@@ -2083,8 +2106,9 @@
             <div class="popover-item"><span>🥇 1º Colocado (55%):</span> <strong id="pop-val-1">R$ 0,00</strong></div>
             <div class="popover-item"><span>🥈 2º Colocado (25%):</span> <strong id="pop-val-2">R$ 0,00</strong></div>
             <div class="popover-item"><span>🥉 3º Colocado (10%):</span> <strong id="pop-val-3">R$ 0,00</strong></div>
+            <div class="popover-item"><span>📢 Fundo Indicação (2%):</span> <strong id="pop-val-referral">R$ 0,00</strong></div>
             <div class="popover-item" style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;">
-              <span>⚙️ Taxa Admin (10%):</span> <strong id="pop-val-admin">R$ 0,00</strong>
+              <span>⚙️ Taxa Admin (8%):</span> <strong id="pop-val-admin">R$ 0,00</strong>
             </div>
           </div>
         </div>
@@ -2108,37 +2132,43 @@
       <div class="ptitle">
         <span><i data-lucide="trophy"
             style="width: 20px; height: 20px; margin-right: 10px; display: inline-block; vertical-align: -3px; color: var(--primary)"></i>Ranking</span>
-        <button class="rules-trigger" onclick="toggleRulesPopover(event)" title="Ver regras de pontuação">
-          <i data-lucide="info" style="width:13px;height:13px"></i>
-          Regras de Pontuação
-          <div class="rules-popover hide" id="rules-popover">
-            <div class="rules-popover-title">📋 Regras de Pontuação</div>
-            <div class="rules-row">
-              <div class="rules-pts-badge gold">+3</div>
-              <div class="rules-desc">
-                <strong>Placar Exato</strong>
-                <span>Acertou o resultado e o número de gols de cada time exatamente.</span>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button id="btn-show-podium" class="rules-trigger" style="display:none; color:var(--gold); border-color:rgba(201, 168, 76, 0.4); background:rgba(201, 168, 76, 0.05);" onclick="testPodium()">
+            <i data-lucide="trophy" style="width:13px;height:13px;color:var(--gold);"></i>
+            Ver Pódio
+          </button>
+          <button class="rules-trigger" onclick="toggleRulesPopover(event)" title="Ver regras de pontuação">
+            <i data-lucide="info" style="width:13px;height:13px"></i>
+            Regras de Pontuação
+            <div class="rules-popover hide" id="rules-popover">
+              <div class="rules-popover-title">📋 Regras de Pontuação</div>
+              <div class="rules-row">
+                <div class="rules-pts-badge gold">+3</div>
+                <div class="rules-desc">
+                  <strong>Placar Exato</strong>
+                  <span>Acertou o resultado e o número de gols de cada time exatamente.</span>
+                </div>
+              </div>
+              <div class="rules-row">
+                <div class="rules-pts-badge blue">+1</div>
+                <div class="rules-desc">
+                  <strong>Resultado Correto</strong>
+                  <span>Acertou quem venceu (ou empate), mas errou algum placar.</span>
+                </div>
+              </div>
+              <div class="rules-row">
+                <div class="rules-pts-badge gray">0</div>
+                <div class="rules-desc">
+                  <strong>Resultado Errado</strong>
+                  <span>Apostou em um vencedor diferente do resultado final.</span>
+                </div>
+              </div>
+              <div class="rules-note">
+                ⚠️ Apenas apostas em jogos a partir da estreia do Brasil (19/jun) contam para o ranking.
               </div>
             </div>
-            <div class="rules-row">
-              <div class="rules-pts-badge blue">+1</div>
-              <div class="rules-desc">
-                <strong>Resultado Correto</strong>
-                <span>Acertou quem venceu (ou empate), mas errou algum placar.</span>
-              </div>
-            </div>
-            <div class="rules-row">
-              <div class="rules-pts-badge gray">0</div>
-              <div class="rules-desc">
-                <strong>Resultado Errado</strong>
-                <span>Apostou em um vencedor diferente do resultado final.</span>
-              </div>
-            </div>
-            <div class="rules-note">
-              ⚠️ Apenas apostas em jogos a partir da estreia do Brasil (19/jun) contam para o ranking.
-            </div>
-          </div>
-        </button>
+          </button>
+        </div>
       </div>
       <div class="card">
         <div class="table-container">
@@ -2476,6 +2506,9 @@
             inputmode="tel" oninput="applyPhoneMask(this)">
           <input class="inp" id="new-cotas" placeholder="Cotas" type="number" min="0" value="1" style="width:90px"
             onkeydown="if(event.key==='Enter')addParticipant()">
+          <select class="inp" id="new-referred-by" style="width:200px" title="Quem indicou este participante">
+            <option value="">Quem indicou? (Ninguém)</option>
+          </select>
           <button class="btn-add" onclick="addParticipant()"><i data-lucide="plus"
               style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i>Adicionar</button>
         </div>
@@ -2539,6 +2572,9 @@
               style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i>
             Finalizar Copa e Exibir Pódio
           </button>
+        </div>
+        <div id="admin-cup-final-match-info" style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 0.85rem; display: flex; flex-direction: column; gap: 8px;">
+          <!-- Carregado dinamicamente -->
         </div>
       </div>
 
@@ -2650,6 +2686,24 @@
         <input type="number" id="edit-p-cotas" min="0" value="1"
           style="width:100%;background:#09090b;border:1px solid var(--border);border-radius:6px;color:var(--foreground);padding:10px 14px;font-size:0.9rem;outline:none;font-family:inherit;transition:all 0.2s ease;">
       </div>
+      <div class="mfield">
+        <label>Quem indicou</label>
+        <select id="edit-p-referred-by" style="width:100%;background:#09090b;border:1px solid var(--border);border-radius:6px;color:var(--foreground);padding:10px 14px;font-size:0.9rem;outline:none;font-family:inherit;transition:all 0.2s ease;">
+        </select>
+      </div>
+      <div class="mfield" style="margin-top:20px;">
+        <label style="display:flex; justify-content:space-between; align-items:center;">
+          <span>Participantes que indicou</span>
+          <span id="edit-p-referred-count" style="color:var(--gold); font-weight:bold; font-size:0.75rem;">0 pontos</span>
+        </label>
+        <div id="edit-p-referred-list" style="max-height:120px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; background:#09090b; padding:6px; margin-bottom:8px; display:flex; flex-direction:column; gap:4px;">
+        </div>
+        <div style="display:flex; gap:8px;">
+          <select id="edit-p-add-referred-sel" style="flex:1; background:#09090b; border:1px solid var(--border); border-radius:6px; color:var(--foreground); padding:6px 10px; font-size:0.85rem; outline:none;">
+          </select>
+          <button type="button" class="btn-add" style="padding:6px 12px; font-size:0.8rem; height:auto; margin:0;" onclick="addReferredParticipant()">Adicionar</button>
+        </div>
+      </div>
       <div id="edit-p-err" style="color:#ef4444;font-size:0.82rem;margin-bottom:8px;min-height:18px;"></div>
       <div class="mbtns">
         <button class="mbtn secondary" onclick="closeEditParticipant()">Cancelar</button>
@@ -2719,7 +2773,6 @@
     <div class="podium-content" style="z-index: 2;">
       <div class="podium-title">🏆 BOLÃO UNK FINALIZADO 🏆</div>
       <div class="podium-winner-country" id="podium-winner-country-announcement">
-        Campeão da Copa: <span>Brasil</span>
       </div>
 
       <div class="podium-pod">
@@ -2728,6 +2781,7 @@
           <div class="pod-avatar" id="pod-avatar-2">2º</div>
           <div class="pod-name" id="pod-name-2">Maria</div>
           <div class="pod-pts" id="pod-pts-2">45 pts</div>
+          <div class="pod-prize" id="pod-prize-2" style="font-size: 0.95rem; color: #10b981; font-weight: 700; margin-bottom: 8px; font-family: Oswald, sans-serif;">R$ 0,00</div>
           <div class="pod-bar silver">
             <div class="pod-rank-num">2</div>
           </div>
@@ -2739,6 +2793,7 @@
           <div class="pod-avatar" id="pod-avatar-1">1º</div>
           <div class="pod-name" id="pod-name-1">João</div>
           <div class="pod-pts" id="pod-pts-1">52 pts</div>
+          <div class="pod-prize" id="pod-prize-1" style="font-size: 1.15rem; color: #10b981; font-weight: 700; margin-bottom: 8px; font-family: Oswald, sans-serif;">R$ 0,00</div>
           <div class="pod-bar gold">
             <i data-lucide="trophy" style="width: 28px; height: 28px; color: #fff; margin-bottom: 8px"></i>
             <div class="pod-rank-num">1</div>
@@ -2750,10 +2805,48 @@
           <div class="pod-avatar" id="pod-avatar-3">3º</div>
           <div class="pod-name" id="pod-name-3">Pedro</div>
           <div class="pod-pts" id="pod-pts-3">40 pts</div>
+          <div class="pod-prize" id="pod-prize-3" style="font-size: 0.95rem; color: #10b981; font-weight: 700; margin-bottom: 8px; font-family: Oswald, sans-serif;">R$ 0,00</div>
           <div class="pod-bar bronze">
             <div class="pod-rank-num">3</div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MY REFERRALS MODAL -->
+  <div class="overlay hide" id="my-referrals-overlay">
+    <div class="modal" style="max-width:400px;">
+      <h2>Minhas Indicações</h2>
+      <div class="modal-sub" style="margin-bottom:12px;">Veja quem você indicou e quanto acumulou em bônus.</div>
+      <div id="my-ref-rank" style="font-size:0.85rem; color:var(--gold); margin-bottom:16px; font-weight:600; text-align:center; background:rgba(201,168,76,0.08); border:1px solid rgba(201,168,76,0.2); border-radius:6px; padding:6px 12px;"></div>
+      
+      <div style="background:#18181b; border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:20px; display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.9rem;">
+          <span style="color:var(--muted-foreground);">Suas indicações:</span>
+          <strong id="my-ref-points" style="color:var(--primary); font-size:1.1rem; font-family:Oswald;">0 pontos</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.9rem;">
+          <span style="color:var(--muted-foreground);">Fundo Total (2%):</span>
+          <strong id="my-ref-total-fund" style="color:var(--foreground);">R$ 0,00</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.9rem;">
+          <span style="color:var(--muted-foreground);">Valor por ponto:</span>
+          <strong id="my-ref-point-value" style="color:var(--foreground);">R$ 0,00</strong>
+        </div>
+        <div style="border-top:1px solid var(--border); margin-top:4px; padding-top:12px; display:flex; justify-content:space-between; align-items:center; font-size:1rem;">
+          <span style="font-weight:600; color:var(--gold);">Estimativa Atual:</span>
+          <strong id="my-ref-bonus" style="color:var(--gold); font-size:1.25rem; font-family:Oswald;">R$ 0,00</strong>
+        </div>
+        <div style="font-size:0.7rem; color:var(--muted-foreground); text-align:right; margin-top:-8px;">* O valor pode variar para mais ou para menos.</div>
+      </div>
+      
+      <div class="sub-title">Pessoas que você indicou:</div>
+      <div id="my-referrals-list" style="max-height:150px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; background:#09090b; padding:8px; margin-bottom:20px; display:flex; flex-direction:column; gap:6px;">
+      </div>
+      
+      <div class="mbtns">
+        <button class="mbtn secondary" onclick="closeMyReferralsModal()" style="width:100%;">Fechar</button>
       </div>
     </div>
   </div>
@@ -2797,9 +2890,37 @@
       if (!el1 || !el2 || !btn) return;
 
       var isValid = el1.value.trim() !== '' && el2.value.trim() !== '';
+
+      if (prefix === 'r' && isValid) {
+        var m = allMatches.find(function(x) { return String(x.id) === String(matchId); });
+        if (m && m.round && !m.round.startsWith("Matchday")) {
+          var penDiv = document.getElementById('penalties-section-' + matchId);
+          var isTie = parseInt(el1.value) === parseInt(el2.value);
+          if (penDiv) {
+            if (isTie) {
+              penDiv.style.display = 'flex';
+            } else {
+              penDiv.style.display = 'none';
+              var btn1 = document.getElementById('pen-btn-1-' + matchId);
+              var btn2 = document.getElementById('pen-btn-2-' + matchId);
+              if (btn1) btn1.classList.remove('active');
+              if (btn2) btn2.classList.remove('active');
+            }
+          }
+          if (isTie) {
+            var btn1 = document.getElementById('pen-btn-1-' + matchId);
+            var btn2 = document.getElementById('pen-btn-2-' + matchId);
+            var selected = (btn1 && btn1.classList.contains('active')) || (btn2 && btn2.classList.contains('active'));
+            if (!selected) {
+              isValid = false;
+            }
+          }
+        }
+      }
+
       btn.disabled = !isValid;
       if (!isValid) {
-        btn.title = "Preencha ambos os placares para salvar";
+        btn.title = "Preencha ambos os placares (e selecione o vencedor nos pênaltis se empatado) para salvar";
         btn.style.opacity = '0.5';
         btn.style.cursor = 'not-allowed';
       } else {
@@ -2807,6 +2928,19 @@
         btn.style.opacity = '1';
         btn.style.cursor = 'pointer';
       }
+    }
+
+    function selectPenaltyWinner(matchId, teamIndex) {
+      var btn1 = document.getElementById('pen-btn-1-' + matchId);
+      var btn2 = document.getElementById('pen-btn-2-' + matchId);
+      if (teamIndex === 1) {
+        if (btn1) btn1.classList.add('active');
+        if (btn2) btn2.classList.remove('active');
+      } else {
+        if (btn1) btn1.classList.remove('active');
+        if (btn2) btn2.classList.add('active');
+      }
+      checkInputs(matchId, null, 'r');
     }
 
     function restoreUnsavedInputs() {
@@ -2966,7 +3100,7 @@
         btnL.style.display = 'none';
         label.innerHTML = session.type === 'admin'
           ? '<span class="badge-admin">Admin</span>'
-          : 'Olá, <strong>' + session.name + '</strong>';
+          : 'Olá, <strong style="cursor:pointer; text-decoration:underline; transition:color 0.2s;" onmouseover="this.style.color=\'var(--primary-hover)\'" onmouseout="this.style.color=\'var(--foreground)\'" onclick="openMyReferralsModal()">' + session.name + '</strong>';
         navA.style.display = session.type === 'participant' ? '' : 'none';
         navAd.style.display = session.type === 'admin' ? '' : 'none';
       } else {
@@ -3258,14 +3392,39 @@
           var isParticipant = session && session.type === 'participant';
 
           var scoreHtml = '';
+          var isKO = m.round && !m.round.startsWith("Matchday");
           if (isAdmin) {
-            scoreHtml = '<div class="sc">'
+            var penWinner = hasResult ? m.result.penalties_winner : null;
+            var isTie = hasResult && m.result.score1 === m.result.score2;
+            var displayStyle = isTie ? 'flex' : 'none';
+            var btn1Active = penWinner === m.team1 ? ' active' : '';
+            var btn2Active = penWinner === m.team2 ? ' active' : '';
+
+            var penaltyHtml = '';
+            if (isKO) {
+              penaltyHtml = '<div class="penalty-winner-section" id="penalties-section-' + m.id + '" style="display: ' + displayStyle + '; flex-direction: column; align-items: center; margin-top: 8px; gap: 4px; width: 100%;">'
+                + '<span style="font-size: 0.7rem; color: var(--muted-foreground)">Vencedor nos Pênaltis:</span>'
+                + '<div style="display: flex; gap: 6px; justify-content: center;">'
+                + '<button type="button" class="btn-penalty-winner' + btn1Active + '" id="pen-btn-1-' + m.id + '" onclick="selectPenaltyWinner(\'' + m.id + '\', 1)">' + tn(m.team1) + '</button>'
+                + '<button type="button" class="btn-penalty-winner' + btn2Active + '" id="pen-btn-2-' + m.id + '" onclick="selectPenaltyWinner(\'' + m.id + '\', 2)">' + tn(m.team2) + '</button>'
+                + '</div>'
+                + '</div>';
+            }
+
+            scoreHtml = '<div style="display:flex;flex-direction:column;align-items:center;width:100%">'
+              + '<div class="sc">'
               + '<input class="sinput" type="number" min="0" max="20" placeholder="–" id="r1-' + m.id + '" value="' + (hasResult && m.result.score1 !== null && m.result.score1 !== undefined ? m.result.score1 : '') + '" oninput="checkInputs(\'' + m.id + '\',null,\'r\')">'
               + '<span class="ssep">:</span>'
               + '<input class="sinput" type="number" min="0" max="20" placeholder="–" id="r2-' + m.id + '" value="' + (hasResult && m.result.score2 !== null && m.result.score2 !== undefined ? m.result.score2 : '') + '" oninput="checkInputs(\'' + m.id + '\',null,\'r\')">'
+              + '</div>'
+              + penaltyHtml
               + '</div>';
           } else if (hasResult) {
-            scoreHtml = '<div class="sc"><div class="sbox">' + m.result.score1 + '</div><span class="ssep">:</span><div class="sbox">' + m.result.score2 + '</div></div>';
+            var penHtml = '';
+            if (isKO && m.result.score1 === m.result.score2 && m.result.penalties_winner) {
+              penHtml = '<div style="font-size:0.75rem;color:var(--gold);margin-top:4px;text-align:center;font-weight:600;"><i data-lucide="trophy" style="width:10px;height:10px;margin-right:2px;display:inline-block;vertical-align:-1px"></i>Pênaltis: ' + tn(m.result.penalties_winner) + '</div>';
+            }
+            scoreHtml = '<div style="display:flex;flex-direction:column;align-items:center;width:100%"><div class="sc"><div class="sbox">' + m.result.score1 + '</div><span class="ssep">:</span><div class="sbox">' + m.result.score2 + '</div></div>' + penHtml + '</div>';
           } else {
             scoreHtml = '<div class="sc"><span style="font-family:Oswald,sans-serif;font-size:1.5rem;color:var(--border)">VS</span></div>';
           }
@@ -3408,7 +3567,27 @@
         lucide.createIcons();
       }
 
-      apiFetch('PUT', '/api/matches/' + id + '/result', { score1: parseInt(s1), score2: parseInt(s2) }, { 'x-admin-pin': session.pin })
+      var m = allMatches.find(function(x) { return String(x.id) === String(id); });
+      var penalties_winner = null;
+      if (m && m.round && !m.round.startsWith("Matchday") && parseInt(s1) === parseInt(s2)) {
+        var btn1 = document.getElementById('pen-btn-1-' + id);
+        var btn2 = document.getElementById('pen-btn-2-' + id);
+        if (btn1 && btn1.classList.contains('active')) {
+          penalties_winner = m.team1;
+        } else if (btn2 && btn2.classList.contains('active')) {
+          penalties_winner = m.team2;
+        } else {
+          toast('Selecione o vencedor nos pênaltis', 'err');
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            lucide.createIcons();
+          }
+          return;
+        }
+      }
+
+      apiFetch('PUT', '/api/matches/' + id + '/result', { score1: parseInt(s1), score2: parseInt(s2), penalties_winner: penalties_winner }, { 'x-admin-pin': session.pin })
         .then(function (r) {
           if (btn) {
             btn.disabled = false;
@@ -3710,28 +3889,7 @@
       // 1. Load participants list
       apiFetch('GET', '/api/participants').then(function (list) {
         allParticipants = Array.isArray(list) ? list : [];
-        var el = document.getElementById('participants-list');
-        if (!el) return;
-        if (!allParticipants.length) { el.innerHTML = '<div class="empty" style="grid-column:1/-1">Nenhum participante.</div>'; return; }
-        el.innerHTML = allParticipants.map(function (p) {
-          var init = p.name.split(' ').map(function (x) { return x[0]; }).join('').slice(0, 2).toUpperCase();
-          var waBtn = '';
-          if (p.phone) {
-            var waNum = '55' + p.phone.replace(/\D/g, '');
-            var waUrl = 'https://wa.me/' + waNum + '?text=' + encodeURIComponent('Olá ' + p.name.split(' ')[0] + '! Aqui é o admin do Bolão UNK 🏆');
-            waBtn = '<a href="' + waUrl + '" target="_blank" rel="noopener" class="btn-icon btn-wa" title="WhatsApp: ' + formatPhone(p.phone) + '"><i data-lucide="message-circle" style="width:14px;height:14px;"></i></a>';
-          }
-          var cotasCount = p.cotas !== undefined ? p.cotas : 1;
-          var cotasText = '<div style="font-size:0.7rem;color:var(--gold);margin-top:2px;font-weight:600;">' + cotasCount + (cotasCount === 1 ? ' Cota' : ' Cotas') + '</div>';
-          return '<div class="pcard"><img class="pavatar" src="' + dicebearUrl(p.name) + '" alt=""><div style="flex:1;min-width:0;"><span class="pname">' + p.name + '</span>' + (p.phone ? '<div style="font-size:0.7rem;color:var(--muted-foreground);margin-top:1px;">' + formatPhone(p.phone) + '</div>' : '') + cotasText + '</div>'
-            + '<div style="display:flex;gap:6px;align-items:center;">'
-            + waBtn
-            + '<button class="btn-icon btn-edit" onclick="openEditParticipant(\'' + p.id + '\',\'' + p.name.replace(/'/g, "\\'") + '\',\'' + (p.phone || '') + '\',' + cotasCount + ')" title="Editar"><i data-lucide="pencil" style="width:14px;height:14px;"></i></button>'
-            + '<button class="btn-icon btn-del" onclick="delParticipant(\'' + p.id + '\')" title="Excluir"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>'
-            + '</div>'
-            + '</div>';
-        }).join('');
-        lucide.createIcons();
+        renderParticipantsList();
       });
 
       // 2. Load valor da cota
@@ -3757,36 +3915,80 @@
         });
 
         var logBody = document.getElementById('bets-log-body');
-        if (!logBody) return;
+        if (logBody) {
+          if (bets.length === 0) {
+            logBody.innerHTML = '<tr><td colspan="4" class="empty" style="text-align:center">Nenhuma aposta registrada.</td></tr>';
+          } else {
+            logBody.innerHTML = bets.map(function (b) {
+              var p = participants.find(function (x) { return x.id === b.participantId; });
+              var m = matches.find(function (x) { return String(x.id) === String(b.matchId); });
+              var pName = p ? p.name : 'Desconhecido';
+              var matchText = m ? (tn(m.team1) + ' x ' + tn(m.team2)) : ('Jogo ' + b.matchId);
 
-        if (bets.length === 0) {
-          logBody.innerHTML = '<tr><td colspan="4" class="empty" style="text-align:center">Nenhuma aposta registrada.</td></tr>';
-          return;
+              var dateText = '';
+              if (b.createdAt) {
+                var dateObj = new Date(b.createdAt);
+                dateText = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' +
+                  dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+              } else {
+                dateText = '–';
+              }
+
+              var scoreText = b.score1 + ' – ' + b.score2;
+              return '<tr>'
+                + '<td>' + dateText + '</td>'
+                + '<td><strong>' + pName + '</strong></td>'
+                + '<td>' + matchText + '</td>'
+                + '<td><span class="badge-score" style="background:var(--input);border:1px solid var(--border);padding:2px 8px;border-radius:4px;font-weight:600;">' + scoreText + '</span></td>'
+                + '</tr>';
+            }).join('');
+          }
         }
 
-        logBody.innerHTML = bets.map(function (b) {
-          var p = participants.find(function (x) { return x.id === b.participantId; });
-          var m = matches.find(function (x) { return String(x.id) === String(b.matchId); });
-          var pName = p ? p.name : 'Desconhecido';
-          var matchText = m ? (tn(m.team1) + ' x ' + tn(m.team2)) : ('Jogo ' + b.matchId);
-
-          var dateText = '';
-          if (b.createdAt) {
-            var dateObj = new Date(b.createdAt);
-            dateText = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' +
-              dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        // Find if a winner is already decided from final match
+        var finalMatch = matches.find(function (m) { return String(m.id) === '104' || m.round === 'Final'; });
+        var finalMatchHtml = '';
+        if (finalMatch) {
+          var hasRes = finalMatch.result && finalMatch.result.score1 !== null && finalMatch.result.score2 !== null;
+          var t1 = finalMatch.team1;
+          var t2 = finalMatch.team2;
+          
+          if (hasRes) {
+            var s1 = finalMatch.result.score1;
+            var s2 = finalMatch.result.score2;
+            var winner = null;
+            var viaPenalties = false;
+            
+            if (s1 > s2) {
+              winner = t1;
+            } else if (s2 > s1) {
+              winner = t2;
+            } else {
+              winner = finalMatch.result.penalties_winner;
+              viaPenalties = true;
+            }
+            
+            var winnerHtml = '';
+            if (winner) {
+              winnerHtml = '<span class="tflag" style="margin-right:4px">' + fl(winner) + '</span><strong>' + tn(winner) + '</strong>' + (viaPenalties ? ' <span style="color:var(--gold);font-size:0.75rem;">(Pênaltis)</span>' : '');
+            } else {
+              winnerHtml = '<span style="color:#ef4444;font-weight:600;">Indefinido (Final empatada, selecione o vencedor nos pênaltis na lista de jogos)</span>';
+            }
+            
+            finalMatchHtml = '<div><strong>Jogo da Final:</strong> <span class="tflag">' + fl(t1) + '</span> ' + tn(t1) + ' <strong style="color:var(--gold);font-family:Oswald">' + s1 + '</strong> : <strong style="color:var(--gold);font-family:Oswald">' + s2 + '</strong> ' + tn(t2) + ' <span class="tflag">' + fl(t2) + '</span></div>'
+              + '<div><strong>Campeão da Copa:</strong> ' + winnerHtml + '</div>';
           } else {
-            dateText = '–';
+            finalMatchHtml = '<div><strong>Jogo da Final:</strong> <span class="tflag">' + fl(t1) + '</span> ' + tn(t1) + ' <strong>VS</strong> ' + tn(t2) + ' <span class="tflag">' + fl(t2) + '</span> <span style="color:var(--muted-foreground);font-size:0.75rem;">(Placar não registrado)</span></div>'
+              + '<div><strong>Campeão da Copa:</strong> <span style="color:var(--muted-foreground)">Aguardando resultado da final</span></div>';
           }
+        } else {
+          finalMatchHtml = '<div><span style="color:#ef4444">Jogo da final não encontrado em matches.json</span></div>';
+        }
+        var finalInfoDiv = document.getElementById('admin-cup-final-match-info');
+        if (finalInfoDiv) {
+          finalInfoDiv.innerHTML = finalMatchHtml;
+        }
 
-          var scoreText = b.score1 + ' – ' + b.score2;
-          return '<tr>'
-            + '<td>' + dateText + '</td>'
-            + '<td><strong>' + pName + '</strong></td>'
-            + '<td>' + matchText + '</td>'
-            + '<td><span class="badge-score" style="background:var(--input);border:1px solid var(--border);padding:2px 8px;border-radius:4px;font-weight:600;">' + scoreText + '</span></td>'
-            + '</tr>';
-        }).join('');
         lucide.createIcons();
       });
 
@@ -3804,6 +4006,10 @@
             label.textContent = 'Copa em andamento';
             label.style.color = 'var(--muted-foreground)';
           }
+        }
+        var btnShowPod = document.getElementById('btn-show-podium');
+        if (btnShowPod) {
+          btnShowPod.style.display = finished ? 'inline-flex' : 'none';
         }
         if (btn) {
           if (finished) {
@@ -3850,6 +4056,7 @@
       var pin = document.getElementById('new-pin').value.trim();
       var phoneMasked = document.getElementById('new-phone').value.trim();
       var cotasVal = parseInt(document.getElementById('new-cotas').value) || 1;
+      var referred_by = document.getElementById('new-referred-by').value || null;
       if (!name) { toast('Nome obrigatório', 'err'); return; }
       if (pin.length < 4) { toast('PIN deve ter 4+ dígitos', 'err'); return; }
 
@@ -3861,7 +4068,7 @@
         lucide.createIcons();
       }
 
-      apiFetch('POST', '/api/participants', { name: name, pin: pin, phone: phoneMasked, cotas: cotasVal }, { 'x-admin-pin': session.pin }).then(function (r) {
+      apiFetch('POST', '/api/participants', { name: name, pin: pin, phone: phoneMasked, cotas: cotasVal, referred_by: referred_by }, { 'x-admin-pin': session.pin }).then(function (r) {
         if (btn) {
           btn.disabled = false;
           btn.innerHTML = origHtml;
@@ -3872,6 +4079,7 @@
         document.getElementById('new-pin').value = '';
         document.getElementById('new-phone').value = '';
         document.getElementById('new-cotas').value = '1';
+        document.getElementById('new-referred-by').value = '';
         toast(name + ' adicionado');
         loadAdmin();
         fetchArrecadado();
@@ -3886,6 +4094,25 @@
       document.getElementById('edit-p-cotas').value = cotas !== undefined ? cotas : 1;
       document.getElementById('edit-p-err').textContent = '';
       document.getElementById('edit-p-subtitle').textContent = 'Editando: ' + name;
+      
+      // Select referrer:
+      var p = allParticipants.find(function (x) { return x.id === id; });
+      var referrerId = p ? p.referred_by : '';
+      
+      // Populate referrer dropdown
+      var refSel = document.getElementById('edit-p-referred-by');
+      if (refSel) {
+        // filter out self
+        var referrersList = allParticipants.filter(function (x) { return x.id !== id; });
+        refSel.innerHTML = '<option value="">Ninguém</option>' +
+          referrersList.map(function (x) {
+            return '<option value="' + x.id + '"' + (x.id === referrerId ? ' selected' : '') + '>' + x.name + '</option>';
+          }).join('');
+      }
+      
+      // Refresh the referred list
+      refreshEditReferredList(id);
+
       document.getElementById('edit-participant-overlay').classList.remove('hide');
       setTimeout(function () { document.getElementById('edit-p-name').focus(); }, 100);
     }
@@ -3900,6 +4127,7 @@
       var pin = document.getElementById('edit-p-pin').value.trim();
       var phoneMasked = document.getElementById('edit-p-phone').value.trim();
       var cotasVal = parseInt(document.getElementById('edit-p-cotas').value) || 0;
+      var referred_by = document.getElementById('edit-p-referred-by').value || null;
       var errEl = document.getElementById('edit-p-err');
       errEl.textContent = '';
 
@@ -3920,7 +4148,7 @@
         lucide.createIcons();
       }
 
-      apiFetch('PUT', '/api/participants/' + id, { name: name, pin: pin || null, phone: cleanPhone || null, cotas: cotasVal }, { 'x-admin-pin': session.pin }).then(function (r) {
+      apiFetch('PUT', '/api/participants/' + id, { name: name, pin: pin || null, phone: cleanPhone || null, cotas: cotasVal, referred_by: referred_by }, { 'x-admin-pin': session.pin }).then(function (r) {
         if (btn) { btn.disabled = false; btn.innerHTML = origHtml; lucide.createIcons(); }
         if (r && r.error) { errEl.textContent = r.error; return; }
         toast(name + ' atualizado!');
@@ -3992,7 +4220,8 @@
         var p1 = val * 0.55;
         var p2 = val * 0.25;
         var p3 = val * 0.10;
-        var padm = val * 0.10;
+        var padm = val * 0.08;
+        var pref = val * 0.02;
 
         var fmt = function (num) {
           return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -4001,11 +4230,13 @@
         var el1 = document.getElementById('pop-val-1');
         var el2 = document.getElementById('pop-val-2');
         var el3 = document.getElementById('pop-val-3');
+        var elref = document.getElementById('pop-val-referral');
         var eladm = document.getElementById('pop-val-admin');
 
         if (el1) el1.textContent = fmt(p1);
         if (el2) el2.textContent = fmt(p2);
         if (el3) el3.textContent = fmt(p3);
+        if (elref) elref.textContent = fmt(pref);
         if (eladm) eladm.textContent = fmt(padm);
 
         return val;
@@ -4153,6 +4384,7 @@
         var p = ranking[i - 1];
         var nameEl = document.getElementById('pod-name-' + i);
         var ptsEl = document.getElementById('pod-pts-' + i);
+        var prizeEl = document.getElementById('pod-prize-' + i);
         var avatarEl = document.getElementById('pod-avatar-' + i);
 
         var prizeText = '';
@@ -4160,9 +4392,11 @@
         else if (i === 2) prizeText = fmt(p2Prize);
         else if (i === 3) prizeText = fmt(p3Prize);
 
+        if (prizeEl) prizeEl.textContent = prizeText;
+
         if (p) {
           if (nameEl) nameEl.textContent = p.name;
-          if (ptsEl) ptsEl.textContent = p.points + ' pts · ' + prizeText;
+          if (ptsEl) ptsEl.textContent = p.points + ' pts';
           if (avatarEl) {
             avatarEl.innerHTML = '';
             var img = document.createElement('img');
@@ -4173,7 +4407,7 @@
           }
         } else {
           if (nameEl) nameEl.textContent = '–';
-          if (ptsEl) ptsEl.textContent = '0 pts · ' + prizeText;
+          if (ptsEl) ptsEl.textContent = '0 pts';
           if (avatarEl) avatarEl.textContent = i + 'º';
         }
       }
@@ -4206,6 +4440,9 @@
         if (finalMatch && finalMatch.result && finalMatch.result.score1 !== null && finalMatch.result.score2 !== null) {
           if (finalMatch.result.score1 > finalMatch.result.score2) winnerTeam = finalMatch.team1;
           else if (finalMatch.result.score2 > finalMatch.result.score1) winnerTeam = finalMatch.team2;
+          else if (finalMatch.result.score1 === finalMatch.result.score2) {
+            winnerTeam = finalMatch.result.penalties_winner || 'Brazil';
+          }
         }
 
         openPodium(ranking, winnerTeam);
@@ -4325,6 +4562,12 @@
           simulatedWinnerTeam = finalMatch.team1;
         } else if (finalRes.score2 > finalRes.score1) {
           simulatedWinnerTeam = finalMatch.team2;
+        } else {
+          if (finalMatch.result && finalMatch.result.penalties_winner && (finalMatch.result.penalties_winner === finalMatch.team1 || finalMatch.result.penalties_winner === finalMatch.team2)) {
+            simulatedWinnerTeam = finalMatch.result.penalties_winner;
+          } else {
+            simulatedWinnerTeam = finalMatch.team1;
+          }
         }
       }
 
@@ -4501,12 +4744,18 @@
 
       // Auto-trigger podium if cup is officially finalized and not shown this session
       if (cupFinishedObj.value === 'true') {
+        var btnShowPod = document.getElementById('btn-show-podium');
+        if (btnShowPod) btnShowPod.style.display = 'inline-flex';
+        
         if (sessionStorage.getItem('podium_shown') !== 'true') {
           var finalMatch = allMatches.find(function (m) { return String(m.id) === '104' || m.round === 'Final'; });
           var winnerTeam = null;
           if (finalMatch && finalMatch.result && finalMatch.result.score1 !== null && finalMatch.result.score2 !== null) {
             if (finalMatch.result.score1 > finalMatch.result.score2) winnerTeam = finalMatch.team1;
             else if (finalMatch.result.score2 > finalMatch.result.score1) winnerTeam = finalMatch.team2;
+            else if (finalMatch.result.score1 === finalMatch.result.score2) {
+              winnerTeam = finalMatch.result.penalties_winner;
+            }
           }
           openPodium(ranking, winnerTeam);
           sessionStorage.setItem('podium_shown', 'true');
@@ -4520,8 +4769,234 @@
       }
     });
 
+    // ─── Referral System Helpers ──────────────────────────────────────────────────
+    function renderParticipantsList() {
+      var el = document.getElementById('participants-list');
+      if (!el) return;
+      if (!allParticipants.length) { el.innerHTML = '<div class="empty" style="grid-column:1/-1">Nenhum participante.</div>'; return; }
+      
+      // Calculate point value:
+      var totalReferrals = allParticipants.filter(function (p) { return p.referred_by; }).length;
+      var valuePerPoint = totalReferrals > 0 ? ((currentArrecadado * 0.02) / totalReferrals) : 0;
+      
+      el.innerHTML = allParticipants.map(function (p) {
+        var waBtn = '';
+        if (p.phone) {
+          var waNum = '55' + p.phone.replace(/\D/g, '');
+          var waUrl = 'https://wa.me/' + waNum + '?text=' + encodeURIComponent('Olá ' + p.name.split(' ')[0] + '! Aqui é o admin do Bolão UNK 🏆');
+          waBtn = '<a href="' + waUrl + '" target="_blank" rel="noopener" class="btn-icon btn-wa" title="WhatsApp: ' + formatPhone(p.phone) + '"><i data-lucide="message-circle" style="width:14px;height:14px;"></i></a>';
+        }
+        var cotasCount = p.cotas !== undefined ? p.cotas : 1;
+        var cotasText = '<div style="font-size:0.7rem;color:var(--gold);margin-top:2px;font-weight:600;">' + cotasCount + (cotasCount === 1 ? ' Cota' : ' Cotas') + '</div>';
+        
+        var referredByText = '';
+        if (p.referred_by) {
+          var referrer = allParticipants.find(function (x) { return x.id === p.referred_by; });
+          if (referrer) {
+            referredByText = '<div style="font-size:0.7rem;color:var(--muted-foreground);margin-top:1px;">Indicado por: <strong>' + referrer.name + '</strong></div>';
+          }
+        }
+        
+        var refPoints = allParticipants.filter(function (x) { return x.referred_by === p.id; }).length;
+        var refMoney = refPoints * valuePerPoint;
+        var referralsText = '';
+        if (refPoints > 0) {
+          referralsText = '<div style="font-size:0.7rem;color:var(--primary-hover);margin-top:1px;font-weight:600;" title="Estimativa atual: ' + refMoney.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) + ' (valor pode variar)">Indicações: ' + refPoints + (refPoints === 1 ? ' ponto' : ' pontos') + ' <span style="font-weight:normal;opacity:0.8;cursor:help;">(?)</span></div>';
+        }
+        
+        return '<div class="pcard"><img class="pavatar" src="' + dicebearUrl(p.name) + '" alt=""><div style="flex:1;min-width:0;"><span class="pname">' + p.name + '</span>' + (p.phone ? '<div style="font-size:0.7rem;color:var(--muted-foreground);margin-top:1px;">' + formatPhone(p.phone) + '</div>' : '') + referredByText + referralsText + cotasText + '</div>'
+          + '<div style="display:flex;gap:6px;align-items:center;">'
+          + waBtn
+          + '<button class="btn-icon btn-edit" onclick="openEditParticipant(\'' + p.id + '\',\'' + p.name.replace(/'/g, "\\'") + '\',\'' + (p.phone || '') + '\',' + cotasCount + ')" title="Editar"><i data-lucide="pencil" style="width:14px;height:14px;"></i></button>'
+          + '<button class="btn-icon btn-del" onclick="delParticipant(\'' + p.id + '\')" title="Excluir"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>'
+          + '</div>'
+          + '</div>';
+      }).join('');
+      lucide.createIcons();
+      
+      // Also update referral select dropdown in addition form
+      var refSel = document.getElementById('new-referred-by');
+      if (refSel) {
+        refSel.innerHTML = '<option value="">Quem indicou? (Ninguém)</option>' +
+          allParticipants.map(function(p) {
+            return '<option value="' + p.id + '">' + p.name + '</option>';
+          }).join('');
+      }
+    }
+
+    function addReferredParticipant() {
+      var referrerId = document.getElementById('edit-p-id').value;
+      var refereeId = document.getElementById('edit-p-add-referred-sel').value;
+      if (!refereeId) return;
+      
+      if (wouldCreateCycleClient(refereeId, referrerId)) {
+        toast('Indicação inválida: cria uma indicação cruzada ou circular', 'err');
+        return;
+      }
+      
+      var referee = allParticipants.find(function(p) { return p.id === refereeId; });
+      if (!referee) return;
+      
+      apiFetch('PUT', '/api/participants/' + refereeId, {
+        name: referee.name,
+        phone: referee.phone,
+        cotas: referee.cotas,
+        referred_by: referrerId
+      }, { 'x-admin-pin': session.pin }).then(function(r) {
+        if (r && r.error) { toast(r.error, 'err'); return; }
+        toast(referee.name + ' agora é indicado por ' + document.getElementById('edit-p-name').value);
+        
+        apiFetch('GET', '/api/participants').then(function(list) {
+          allParticipants = Array.isArray(list) ? list : [];
+          refreshEditReferredList(referrerId);
+          renderParticipantsList();
+        });
+      });
+    }
+
+    function removeReferredParticipant(refereeId) {
+      var referrerId = document.getElementById('edit-p-id').value;
+      var referee = allParticipants.find(function(p) { return p.id === refereeId; });
+      if (!referee) return;
+      
+      apiFetch('PUT', '/api/participants/' + refereeId, {
+        name: referee.name,
+        phone: referee.phone,
+        cotas: referee.cotas,
+        referred_by: null
+      }, { 'x-admin-pin': session.pin }).then(function(r) {
+        if (r && r.error) { toast(r.error, 'err'); return; }
+        toast('Indicação de ' + referee.name + ' removida');
+        
+        apiFetch('GET', '/api/participants').then(function(list) {
+          allParticipants = Array.isArray(list) ? list : [];
+          refreshEditReferredList(referrerId);
+          renderParticipantsList();
+        });
+      });
+    }
+
+    function refreshEditReferredList(referrerId) {
+      var referred = allParticipants.filter(function(p) { return p.referred_by === referrerId; });
+      var listEl = document.getElementById('edit-p-referred-list');
+      var countEl = document.getElementById('edit-p-referred-count');
+      
+      if (countEl) {
+        countEl.textContent = referred.length + (referred.length === 1 ? ' ponto' : ' pontos');
+      }
+      
+      if (listEl) {
+        if (referred.length === 0) {
+          listEl.innerHTML = '<div style="color:var(--muted-foreground);font-size:0.8rem;text-align:center;padding:10px 0;">Nenhum indicado ainda.</div>';
+        } else {
+          listEl.innerHTML = referred.map(function(p) {
+            return '<div style="display:flex;align-items:center;justify-content:space-between;font-size:0.85rem;padding:4px 6px;background:#18181b;border:1px solid var(--border);border-radius:4px;">' +
+              '<span>' + p.name + '</span>' +
+              '<button type="button" class="btn-sm" style="padding:2px 6px;font-size:0.75rem;border-color:var(--red);color:var(--red);" onclick="removeReferredParticipant(\'' + p.id + '\')">Remover</button>' +
+              '</div>';
+          }).join('');
+        }
+      }
+      
+      var addSel = document.getElementById('edit-p-add-referred-sel');
+      if (addSel) {
+        var candidates = allParticipants.filter(function(p) { return p.id !== referrerId && p.referred_by !== referrerId && !wouldCreateCycleClient(p.id, referrerId); });
+        addSel.innerHTML = '<option value="">Adicionar indicado...</option>' +
+          candidates.map(function(p) {
+            var suffix = p.referred_by ? ' (Já indicado por ' + (allParticipants.find(function(x) { return x.id === p.referred_by; })?.name || 'outro') + ')' : '';
+            return '<option value="' + p.id + '">' + p.name + suffix + '</option>';
+          }).join('');
+      }
+    }
+
+    function wouldCreateCycleClient(participantId, potentialReferrerId) {
+      if (!potentialReferrerId) return false;
+      if (participantId === potentialReferrerId) return true;
+      
+      var current = potentialReferrerId;
+      var visited = {};
+      visited[participantId] = true;
+      
+      while (current) {
+        if (visited[current]) {
+          return true;
+        }
+        visited[current] = true;
+        var p = allParticipants.find(function(x) { return x.id === current; });
+        current = p ? p.referred_by : null;
+      }
+      return false;
+    }
+
+    function openMyReferralsModal() {
+      if (!session || session.type !== 'participant') return;
+      var myId = session.id;
+      
+      var totalReferrals = allParticipants.filter(function (p) { return p.referred_by; }).length;
+      var valuePerPoint = totalReferrals > 0 ? ((currentArrecadado * 0.02) / totalReferrals) : 0;
+      var referred = allParticipants.filter(function (p) { return p.referred_by === myId; });
+      var myPoints = referred.length;
+      var myBonus = myPoints * valuePerPoint;
+      
+      // Calculate my rank in referrals
+      var refCounts = allParticipants.map(function(p) {
+        var count = allParticipants.filter(function(x) { return x.referred_by === p.id; }).length;
+        return { id: p.id, count: count };
+      });
+      refCounts.sort(function(a, b) { return b.count - a.count; });
+      
+      var myRank = 1;
+      var previousCount = -1;
+      var rankInList = 1;
+      for (var idx = 0; idx < refCounts.length; idx++) {
+        if (refCounts[idx].count !== previousCount) {
+          rankInList = idx + 1;
+          previousCount = refCounts[idx].count;
+        }
+        if (refCounts[idx].id === myId) {
+          myRank = rankInList;
+          break;
+        }
+      }
+      var totalParticipants = allParticipants.length;
+      
+      var fmt = function (num) {
+        return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      };
+      
+      document.getElementById('my-ref-rank').innerHTML = 'Você está em <strong>' + myRank + 'º lugar</strong> de <strong>' + totalParticipants + '</strong> em indicações';
+      document.getElementById('my-ref-points').textContent = myPoints + (myPoints === 1 ? ' ponto' : ' pontos');
+      document.getElementById('my-ref-total-fund').textContent = fmt(currentArrecadado * 0.02);
+      document.getElementById('my-ref-point-value').textContent = fmt(valuePerPoint);
+      document.getElementById('my-ref-bonus').textContent = fmt(myBonus);
+      
+      var listEl = document.getElementById('my-referrals-list');
+      if (listEl) {
+        if (referred.length === 0) {
+          listEl.innerHTML = '<div style="color:var(--muted-foreground);font-size:0.85rem;text-align:center;padding:12px 0;">Você ainda não indicou ninguém.</div>';
+        } else {
+          listEl.innerHTML = referred.map(function (p) {
+            return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.02);">' +
+              '<img src="' + dicebearUrl(p.name) + '" style="width:24px;height:24px;border-radius:50%;background:#27272a;">' +
+              '<span style="font-size:0.9rem;font-weight:500;">' + p.name + '</span>' +
+              '</div>';
+          }).join('');
+        }
+      }
+      
+      document.getElementById('my-referrals-overlay').classList.remove('hide');
+    }
+    
+    function closeMyReferralsModal() {
+      document.getElementById('my-referrals-overlay').classList.add('hide');
+    }
+
     document.getElementById('overlay').addEventListener('click', function (e) {
       if (e.target === e.currentTarget) closeLogin();
+    });
+
+    document.getElementById('my-referrals-overlay').addEventListener('click', function (e) {
+      if (e.target === e.currentTarget) closeMyReferralsModal();
     });
 
     [0, 1, 2, 3].forEach(function (i) {
