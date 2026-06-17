@@ -376,7 +376,7 @@ module.exports = async function handler(req, res) {
       // Block bets once the match has started
       const match = loadMatches().find(m => m.id === String(matchId));
       if (match && isLocked(match)) {
-        return res.status(403).json({ error: 'As apostas para este jogo já foram encerradas' });
+        return res.status(403).json({ error: 'Os palpites para este jogo já foram encerrados' });
       }
 
       const id = uuidv4();

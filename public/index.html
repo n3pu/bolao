@@ -616,6 +616,11 @@
       border-color: var(--muted-foreground);
     }
 
+    .arow.today {
+      border: 1.5px solid rgba(201, 168, 76, 0.5);
+      box-shadow: 0 0 12px rgba(201, 168, 76, 0.15);
+    }
+
     .ateam-l {
       display: flex;
       align-items: center;
@@ -1691,9 +1696,26 @@
     }
 
     .badge-status.live {
-      background: rgba(245, 158, 11, 0.1);
-      color: #f59e0b;
-      border: 1px solid rgba(245, 158, 11, 0.2);
+      background: rgba(16, 185, 129, 0.1);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .badge-status.live::before {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+      animation: pulse-live 1.5s infinite;
+    }
+    @keyframes pulse-live {
+      0% { transform: scale(0.85); opacity: 0.6; }
+      50% { transform: scale(1.25); opacity: 1; }
+      100% { transform: scale(0.85); opacity: 0.6; }
     }
 
     /* Popover styles */
@@ -1943,6 +1965,11 @@
 
     .mc.past:hover {
       opacity: 0.98;
+    }
+
+    .mc.today {
+      border: 1.5px solid rgba(201, 168, 76, 0.5);
+      box-shadow: 0 0 12px rgba(201, 168, 76, 0.15);
     }
 
     /* Score & Ranking Simulator styles */
@@ -3436,7 +3463,7 @@
               actHtml += ' <button class="btn-del" style="margin-left:4px" onclick="clearResult(\'' + m.id + '\')"><i data-lucide="trash-2" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Remover</button>';
             }
           } else if (hasResult) {
-            actHtml = '<span class="done-badge"><i data-lucide="check" style="width:10px;height:10px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Encerrado</span>';
+            actHtml = '<span class="done-badge"><i data-lucide="lock" style="width:10px;height:10px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Palpites Encerrados</span>';
           }
 
           var myBetInfoHtml = '';
@@ -3486,13 +3513,13 @@
                       cotaRowHtml = '<div class="cota-row" style="display:flex;align-items:center;justify-content:space-between;width:100%;font-size:0.85rem;">'
                         + '<span style="font-weight:600;color:var(--muted-foreground);">' + cotaLabel + ':</span>'
                         + '<div>Palpite: <strong style="color:var(--gold);font-family:Oswald;">' + myBet.score1 + '–' + myBet.score2 + '</strong></div>'
-                        + '<span style="font-size:0.75rem;color:var(--muted-foreground);">(Apostas encerradas)</span>'
+                        + '<span style="font-size:0.75rem;color:var(--muted-foreground);">(Palpites encerrados)</span>'
                         + '</div>';
                     } else {
                       cotaRowHtml = '<div class="cota-row" style="display:flex;align-items:center;justify-content:space-between;width:100%;font-size:0.85rem;color:var(--muted-foreground);">'
                         + '<span style="font-weight:600;">' + cotaLabel + ':</span>'
                         + '<div>Sem palpite</div>'
-                        + '<span style="font-size:0.75rem;color:var(--muted-foreground);">(Apostas encerradas)</span>'
+                        + '<span style="font-size:0.75rem;color:var(--muted-foreground);">(Palpites encerrados)</span>'
                         + '</div>';
                     }
                   } else {
@@ -3525,13 +3552,24 @@
 
           var statusBadgeHtml = '';
           if (hasResult) {
-            statusBadgeHtml = '<span class="badge-status final">Resultado Final</span>';
+            statusBadgeHtml = '<span class="badge-status final">Placar Definido</span>';
           } else if (m.locked) {
-            statusBadgeHtml = '<span class="badge-status live">Encerrado</span>';
+            statusBadgeHtml = '<span class="badge-status live">AO VIVO</span>';
           }
 
-          var isPast = m.locked || hasResult;
-          var cardClass = 'mc' + (isPast ? ' past' : '');
+          var today = new Date();
+          var y = today.getFullYear();
+          var m_ = String(today.getMonth() + 1).padStart(2, '0');
+          var d = String(today.getDate()).padStart(2, '0');
+          var todayStr = y + '-' + m_ + '-' + d;
+
+          var isToday = matchDate(m) === todayStr;
+          var isLive = m.locked && !hasResult;
+          var isPast = (m.locked || hasResult) && !isToday && !isLive;
+
+          var cardClass = 'mc';
+          if (isPast) cardClass += ' past';
+          if (isToday || isLive) cardClass += ' today';
           var phase = m.group || m.round.replace(/Matchday \d+/, '').trim() || m.round;
           return '<div class="' + cardClass + '">'
             + '<div class="mc-head"><span class="mc-phase">' + (phase || m.round) + statusBadgeHtml + '</span><span class="mc-date">' + fmtTime(m.datetime) + (m.ground ? ' · ' + m.ground : '') + '</span></div>'
@@ -3781,13 +3819,13 @@
                 rowHtml = '<div style="display:flex; align-items:center; justify-content:space-between; font-size:0.8rem; width:100%;">'
                   + '<span style="color:var(--muted-foreground); font-weight:600;">' + cotaLabel + ':</span>'
                   + '<div>Seu palpite: <strong style="color:var(--gold);">' + myBet.score1 + '–' + myBet.score2 + '</strong></div>'
-                  + '<span style="font-size:0.7rem; color:var(--muted-foreground);">(Apostas encerradas)</span>'
+                  + '<span style="font-size:0.7rem; color:var(--muted-foreground);">(Palpites encerrados)</span>'
                   + '</div>';
               } else {
                 rowHtml = '<div style="display:flex; align-items:center; justify-content:space-between; font-size:0.8rem; color:var(--muted-foreground); width:100%;">'
                   + '<span style="font-weight:600;">' + cotaLabel + ':</span>'
                   + '<div>Sem palpite</div>'
-                  + '<span style="font-size:0.7rem; color:var(--muted-foreground);">(Apostas encerradas)</span>'
+                  + '<span style="font-size:0.7rem; color:var(--muted-foreground);">(Palpites encerrados)</span>'
                   + '</div>';
               }
             } else {
@@ -3815,8 +3853,21 @@
         }
         cotasRowsHtml += '</div>';
 
-        var opacityStyle = m.locked ? ' style="opacity:.65; display:flex; flex-direction:column; align-items:stretch;"' : ' style="display:flex; flex-direction:column; align-items:stretch;"';
-        return '<div class="arow"' + opacityStyle + '>'
+        var today = new Date();
+        var y = today.getFullYear();
+        var m_ = String(today.getMonth() + 1).padStart(2, '0');
+        var d = String(today.getDate()).padStart(2, '0');
+        var todayStr = y + '-' + m_ + '-' + d;
+
+        var isToday = matchDate(m) === todayStr;
+        var hasResult = m.result && m.result.score1 !== null && m.result.score2 !== null;
+        var isLive = m.locked && !hasResult;
+        
+        var isPast = m.locked && !isToday && !isLive;
+        var opacityStyle = isPast ? ' style="opacity:.65; display:flex; flex-direction:column; align-items:stretch;"' : ' style="display:flex; flex-direction:column; align-items:stretch;"';
+        var classStr = 'arow' + ((isToday || isLive) ? ' today' : '');
+
+        return '<div class="' + classStr + '"' + opacityStyle + '>'
           + matchHeaderHtml
           + cotasRowsHtml
           + '</div>';
@@ -3857,7 +3908,7 @@
             btn.innerHTML = origHtml;
             lucide.createIcons();
           }
-          if (r.error.indexOf('encerradas') !== -1) {
+          if (r.error.indexOf('encerrados') !== -1 || r.error.indexOf('encerradas') !== -1) {
             apiFetch('GET', '/api/matches').then(function (m) {
               allMatches = Array.isArray(m) ? m : allMatches;
               renderJogos();
