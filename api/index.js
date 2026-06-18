@@ -46,7 +46,7 @@ async function initDB() {
       UNIQUE(participant_id, match_id, cota_index)
     );
     CREATE TABLE IF NOT EXISTS results (
-      match_id TEXT PRIMARY KEY, score1 INTEGER, score2 INTEGER
+      match_id TEXT PRIMARY KEY, score1 INTEGER, score2 INTEGER, status TEXT DEFAULT 'finished'
     );
     CREATE TABLE IF NOT EXISTS push_subscriptions (
       id TEXT PRIMARY KEY,
@@ -54,6 +54,22 @@ async function initDB() {
       endpoint TEXT UNIQUE NOT NULL,
       keys_auth TEXT NOT NULL,
       keys_p256dh TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS banners (
+      id TEXT PRIMARY KEY,
+      message TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'warning',
+      active BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS comm_log (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      sub_type TEXT,
+      message TEXT NOT NULL,
+      detail TEXT,
+      recipient_count INTEGER,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
@@ -72,6 +88,13 @@ async function initDB() {
     .catch(err => console.log('cota_index col:', err.message));
   await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS penalties_winner TEXT;`)
     .catch(err => console.log('penalties_winner col:', err.message));
+  await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'finished';`)
+    .catch(err => console.log('status col:', err.message));
+  await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'warning';`)
+    .catch(err => console.log('banner type col:', err.message));
+  // Auto-cleanup comm_log older than 10 days
+  await pool.query(`DELETE FROM comm_log WHERE created_at < NOW() - INTERVAL '10 days';`)
+    .catch(err => console.log('comm_log cleanup:', err.message));
   
   try {
     await pool.query(`ALTER TABLE bets DROP CONSTRAINT IF EXISTS bets_participant_id_match_id_key;`);
@@ -191,9 +214,9 @@ module.exports = async function handler(req, res) {
     // GET /matches
     if (url === '/matches' && method === 'GET') {
       const matches = loadMatches();
-      const { rows } = await pool.query('SELECT match_id, score1, score2, penalties_winner FROM results');
+      const { rows } = await pool.query('SELECT match_id, score1, score2, penalties_winner, status FROM results');
       const resMap = {};
-      rows.forEach(r => { resMap[r.match_id] = { score1: r.score1, score2: r.score2, penalties_winner: r.penalties_winner }; });
+      rows.forEach(r => { resMap[r.match_id] = { score1: r.score1, score2: r.score2, penalties_winner: r.penalties_winner, status: r.status }; });
       return res.status(200).json(matches.map(m => ({
         ...m,
         result: resMap[m.id] || null,
@@ -201,14 +224,14 @@ module.exports = async function handler(req, res) {
       })));
     }
 
-    // PUT /matches/:id/result
+    // - PUT /matches/:id/result
     const matchResult = url.match(/^\/matches\/([^/]+)\/result$/);
     if (matchResult && method === 'PUT') {
       const adminPin = await getAdminPin();
       if (String(req.headers['x-admin-pin']) !== adminPin)
         return res.status(401).json({ error: 'PIN de admin incorreto' });
       const id = matchResult[1];
-      const { score1, score2, penalties_winner } = body;
+      const { score1, score2, penalties_winner, status } = body;
       if (score1 === null || score1 === undefined) {
         await pool.query('DELETE FROM results WHERE match_id=$1', [id]);
         const matches = loadMatches();
@@ -218,9 +241,9 @@ module.exports = async function handler(req, res) {
         }
       } else {
         await pool.query(
-          `INSERT INTO results (match_id,score1,score2,penalties_winner) VALUES ($1,$2,$3,$4)
-           ON CONFLICT (match_id) DO UPDATE SET score1=$2,score2=$3,penalties_winner=$4`,
-          [id, score1, score2, penalties_winner || null]
+          `INSERT INTO results (match_id,score1,score2,penalties_winner,status) VALUES ($1,$2,$3,$4,$5)
+           ON CONFLICT (match_id) DO UPDATE SET score1=$2,score2=$3,penalties_winner=$4,status=$5`,
+          [id, score1, score2, penalties_winner || null, status || 'finished']
         );
         const matches = loadMatches();
         const m = matches.find(x => String(x.id) === String(id));
@@ -660,9 +683,101 @@ module.exports = async function handler(req, res) {
       });
       
       await Promise.all(sendPromises);
+      // Log to comm_log
+      await pool.query(
+        `INSERT INTO comm_log (id, type, sub_type, message, detail, recipient_count) VALUES ($1, 'push', NULL, $2, $3, $4)`,
+        [uuidv4(), msgBody, title, rows.length]
+      ).catch(e => console.error('comm_log push insert:', e.message));
       return res.status(200).json({ ok: true, count: rows.length });
     }
 
+    // ─── GET /banners/active (public) ─────────────────────────────────────────────
+    if (url === '/banners/active' && method === 'GET') {
+      const { rows } = await pool.query(`SELECT id, message, type FROM banners WHERE active = TRUE LIMIT 1`);
+      return res.status(200).json(rows[0] || null);
+    }
+
+    // ─── GET /banners (admin only) ────────────────────────────────────────────────
+    if (url === '/banners' && method === 'GET') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+      const { rows } = await pool.query(`SELECT id, message, type, active, created_at FROM banners ORDER BY created_at DESC LIMIT 50`);
+      return res.status(200).json(rows);
+    }
+
+    // ─── POST /banners (create + activate) ────────────────────────────────────────
+    if (url === '/banners' && method === 'POST') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+      const { message, type } = body;
+      if (!message || !message.trim()) return res.status(400).json({ error: 'Mensagem obrigatória' });
+      const validTypes = ['warning', 'success', 'danger'];
+      const bannerType = validTypes.includes(type) ? type : 'warning';
+      const id = uuidv4();
+      // Deactivate all existing banners first
+      await pool.query(`UPDATE banners SET active = FALSE`);
+      await pool.query(
+        `INSERT INTO banners (id, message, type, active) VALUES ($1, $2, $3, TRUE)`,
+        [id, message.trim(), bannerType]
+      );
+      // Log to comm_log
+      await pool.query(
+        `INSERT INTO comm_log (id, type, sub_type, message, detail, recipient_count) VALUES ($1, 'banner', $2, $3, NULL, NULL)`,
+        [uuidv4(), bannerType, message.trim()]
+      ).catch(e => console.error('comm_log banner insert:', e.message));
+      return res.status(200).json({ id, ok: true });
+    }
+
+    // ─── PUT /banners/:id/activate ────────────────────────────────────────────────
+    const bannerActivate = url.match(/^\/banners\/([^/]+)\/activate$/);
+    if (bannerActivate && method === 'PUT') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+      const bid = bannerActivate[1];
+      await pool.query(`UPDATE banners SET active = FALSE`);
+      const result = await pool.query(`UPDATE banners SET active = TRUE WHERE id = $1 RETURNING message, type`, [bid]);
+      if (result.rows.length) {
+        await pool.query(
+          `INSERT INTO comm_log (id, type, sub_type, message, detail, recipient_count) VALUES ($1, 'banner', $2, $3, 'reativado', NULL)`,
+          [uuidv4(), result.rows[0].type, result.rows[0].message]
+        ).catch(e => console.error('comm_log banner activate:', e.message));
+      }
+      return res.status(200).json({ ok: true });
+    }
+
+    // ─── PUT /banners/:id/deactivate ──────────────────────────────────────────────
+    const bannerDeactivate = url.match(/^\/banners\/([^/]+)\/deactivate$/);
+    if (bannerDeactivate && method === 'PUT') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+      await pool.query(`UPDATE banners SET active = FALSE WHERE id = $1`, [bannerDeactivate[1]]);
+      return res.status(200).json({ ok: true });
+    }
+
+    // ─── DELETE /banners/:id ──────────────────────────────────────────────────────
+    const bannerDelete = url.match(/^\/banners\/([^/]+)$/);
+    if (bannerDelete && method === 'DELETE') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+      await pool.query(`DELETE FROM banners WHERE id = $1`, [bannerDelete[1]]);
+      return res.status(200).json({ ok: true });
+    }
+
+    // ─── GET /comm-log (admin only) ───────────────────────────────────────────────
+    if (url === '/comm-log' && method === 'GET') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+      const { rows } = await pool.query(
+        `SELECT id, type, sub_type, message, detail, recipient_count, created_at FROM comm_log ORDER BY created_at DESC LIMIT 200`
+      );
+      return res.status(200).json(rows);
+    }
 
     return res.status(404).json({ error: 'Rota não encontrada: ' + url });
 

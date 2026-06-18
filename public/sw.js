@@ -1,8 +1,9 @@
-const CACHE_NAME = 'bolao-unk-v2';
+const CACHE_NAME = 'bolao-unk-v3';
 const ASSETS = [
   '/',
   '/index.html',
-  '/logo.png'
+  '/logo.png',
+  '/badge.png'
 ];
 
 self.addEventListener('install', function(event) {
@@ -11,6 +12,7 @@ self.addEventListener('install', function(event) {
       return cache.addAll(ASSETS);
     })
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', function(event) {
@@ -25,6 +27,7 @@ self.addEventListener('activate', function(event) {
       );
     })
   );
+  self.clients.claim();
 });
 
 self.addEventListener('fetch', function(event) {
@@ -65,7 +68,7 @@ self.addEventListener('push', function(event) {
   const options = {
     body: data.body || "Atualização no Bolão!",
     icon: "/logo.png",
-    badge: "/logo.png",
+    badge: "/badge.png",
     vibrate: [100, 50, 100],
     data: {
       url: data.url || "/"
