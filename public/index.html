@@ -3456,10 +3456,57 @@
 
     function checkInputs(matchId, cotaIndex, prefix) {
       var el1, el2, btn;
-      if (prefix === 'r') {
-        el1 = document.getElementById('r1-' + matchId);
-        el2 = document.getElementById('r2-' + matchId);
-        btn = document.querySelector('button[onclick="saveResult(\'' + matchId + '\')"]');
+      var isRank = prefix === 'rank-r';
+      var idPrefix = isRank ? 'rank-' : '';
+      if (prefix === 'r' || prefix === 'rank-r') {
+        el1 = document.getElementById(idPrefix + 'r1-' + matchId);
+        el2 = document.getElementById(idPrefix + 'r2-' + matchId);
+        var btnFinish = document.querySelector('#' + (isRank ? 'page-ranking' : 'page-jogos') + ' button[onclick*="saveFinishResult(\'' + matchId + '\')"]');
+        var btnLive = document.querySelector('#' + (isRank ? 'page-ranking' : 'page-jogos') + ' button[onclick*="saveLiveResult(\'' + matchId + '\')"]');
+        
+        if (!el1 || !el2) return;
+        
+        var isValidLive = el1.value.trim() !== '' && el2.value.trim() !== '';
+        var isValidFinish = isValidLive;
+        
+        if (isValidLive) {
+          var m = allMatches.find(function (x) { return String(x.id) === String(matchId); });
+          if (m && m.round && !m.round.startsWith("Matchday")) {
+            var penDiv = document.getElementById(idPrefix + 'penalties-section-' + matchId);
+            var isTie = parseInt(el1.value) === parseInt(el2.value);
+            if (penDiv) {
+              if (isTie) {
+                penDiv.style.display = 'flex';
+              } else {
+                penDiv.style.display = 'none';
+                var btn1 = document.getElementById(idPrefix + 'pen-btn-1-' + matchId);
+                var btn2 = document.getElementById(idPrefix + 'pen-btn-2-' + matchId);
+                if (btn1) btn1.classList.remove('active');
+                if (btn2) btn2.classList.remove('active');
+              }
+            }
+            if (isTie) {
+              var btn1 = document.getElementById(idPrefix + 'pen-btn-1-' + matchId);
+              var btn2 = document.getElementById(idPrefix + 'pen-btn-2-' + matchId);
+              var selected = (btn1 && btn1.classList.contains('active')) || (btn2 && btn2.classList.contains('active'));
+              if (!selected) {
+                isValidFinish = false;
+              }
+            }
+          }
+        }
+        
+        if (btnLive) {
+          btnLive.disabled = !isValidLive;
+          btnLive.style.opacity = !isValidLive ? '0.5' : '';
+          btnLive.style.cursor = !isValidLive ? 'not-allowed' : '';
+        }
+        if (btnFinish) {
+          btnFinish.disabled = !isValidFinish;
+          btnFinish.style.opacity = !isValidFinish ? '0.5' : '';
+          btnFinish.style.cursor = !isValidFinish ? 'not-allowed' : '';
+        }
+        return;
       } else {
         el1 = document.getElementById(prefix + '1-' + matchId + '-' + cotaIndex);
         el2 = document.getElementById(prefix + '2-' + matchId + '-' + cotaIndex);
@@ -3470,33 +3517,6 @@
       if (!el1 || !el2 || !btn) return;
 
       var isValid = el1.value.trim() !== '' && el2.value.trim() !== '';
-
-      if (prefix === 'r' && isValid) {
-        var m = allMatches.find(function (x) { return String(x.id) === String(matchId); });
-        if (m && m.round && !m.round.startsWith("Matchday")) {
-          var penDiv = document.getElementById('penalties-section-' + matchId);
-          var isTie = parseInt(el1.value) === parseInt(el2.value);
-          if (penDiv) {
-            if (isTie) {
-              penDiv.style.display = 'flex';
-            } else {
-              penDiv.style.display = 'none';
-              var btn1 = document.getElementById('pen-btn-1-' + matchId);
-              var btn2 = document.getElementById('pen-btn-2-' + matchId);
-              if (btn1) btn1.classList.remove('active');
-              if (btn2) btn2.classList.remove('active');
-            }
-          }
-          if (isTie) {
-            var btn1 = document.getElementById('pen-btn-1-' + matchId);
-            var btn2 = document.getElementById('pen-btn-2-' + matchId);
-            var selected = (btn1 && btn1.classList.contains('active')) || (btn2 && btn2.classList.contains('active'));
-            if (!selected) {
-              isValid = false;
-            }
-          }
-        }
-      }
 
       btn.disabled = !isValid;
       if (!isValid) {
@@ -3835,6 +3855,7 @@
         if (banner) banner.style.display = hasLive ? 'flex' : 'none';
 
         // Render live matches or YouTube banner
+        var isAdmin = session && session.type === 'admin';
         var liveMatches = matches.filter(function (m) {
           return m.locked && (!m.result || m.result.status === 'live');
         });
@@ -3846,36 +3867,93 @@
               + '<span class="pulse-dot" style="background:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.7);display:inline-block;width:8px;height:8px;border-radius:50%;"></span>Jogos ao Vivo</div>'
               + liveMatches.map(function (m) {
                 var hasScore = m.result && m.result.score1 !== null && m.result.score2 !== null;
-                var score1 = hasScore ? m.result.score1 : '–';
-                var score2 = hasScore ? m.result.score2 : '–';
-                var liveUrl = (m.result && m.result.live_link) ? m.result.live_link : 'https://www.youtube.com/@CazeTV';
-                var isCaze = liveUrl === 'https://www.youtube.com/@CazeTV';
-                var platformText = isCaze ? 'CazéTV' : 'Assistir ao Vivo';
                 var phase = m.group || (m.round && m.round.replace(/Matchday \d+/, '').trim()) || m.round;
                 
-                return '<div class="mc today" style="border-left: 3px solid #ef4444; margin-bottom: 16px;">'
-                  + '<div class="mc-head"><span class="mc-phase">' + phase + ' <span class="badge-status live">AO VIVO</span></span><span class="mc-date">' + fmtTime(m.datetime) + (m.ground ? ' · ' + m.ground : '') + '</span></div>'
-                  + '<div class="mc-body">'
-                  + '  <div class="team-l"><span class="tflag">' + fl(m.team1) + '</span><span class="tname">' + tn(m.team1) + '</span></div>'
-                  + '  <div style="display:flex;flex-direction:column;align-items:center;width:100%;">'
-                  + '    <div class="sc">'
-                  + '      <div class="sbox" style="border-color:rgba(16,185,129,0.4);color:#10b981;background:rgba(16,185,129,0.08);font-size:1.6rem;">' + score1 + '</div>'
-                  + '      <span class="ssep" style="color:#10b981;">:</span>'
-                  + '      <div class="sbox" style="border-color:rgba(16,185,129,0.4);color:#10b981;background:rgba(16,185,129,0.08);font-size:1.6rem;">' + score2 + '</div>'
-                  + '    </div>'
-                  + '  </div>'
-                  + '  <div class="team-r"><span class="tflag">' + fl(m.team2) + '</span><span class="tname">' + tn(m.team2) + '</span></div>'
-                  + '</div>'
-                  + '<div class="mc-foot" style="justify-content:flex-end; padding: 10px 16px;">'
-                  + '  <a href="' + liveUrl + '" target="_blank" rel="noopener noreferrer"'
-                  + '    style="display:inline-flex;align-items:center;gap:6px;background:var(--primary);color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:0.8rem;font-weight:600;font-family:inherit;text-decoration:none;transition:background 0.2s ease;white-space:nowrap;"'
-                  + '    onmouseover="this.style.background=\'var(--primary-hover)\'"'
-                  + '    onmouseout="this.style.background=\'var(--primary)\'">'
-                  + '    <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:#fff;margin-right:2px;"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>'
-                  + '    ' + platformText
-                  + '  </a>'
-                  + '</div>'
-                  + '</div>';
+                if (isAdmin) {
+                  var isKO = m.round && !m.round.startsWith("Matchday");
+                  var penWinner = hasScore ? m.result.penalties_winner : null;
+                  var isTie = hasScore && m.result.score1 === m.result.score2;
+                  var displayStyle = isTie ? 'flex' : 'none';
+                  var btn1Active = penWinner === m.team1 ? ' active' : '';
+                  var btn2Active = penWinner === m.team2 ? ' active' : '';
+
+                  var penaltyHtml = '';
+                  if (isKO) {
+                    penaltyHtml = '<div class="penalty-winner-section" id="rank-penalties-section-' + m.id + '" style="display: ' + displayStyle + '; flex-direction: column; align-items: center; margin-top: 8px; gap: 4px; width: 100%;">'
+                      + '<span style="font-size: 0.7rem; color: var(--muted-foreground)">Vencedor nos Pênaltis:</span>'
+                      + '<div style="display: flex; gap: 6px; justify-content: center;">'
+                      + '<button type="button" class="btn-penalty-winner' + btn1Active + '" id="rank-pen-btn-1-' + m.id + '" onclick="selectPenaltyWinner(\'' + m.id + '\', 1)">' + tn(m.team1) + '</button>'
+                      + '<button type="button" class="btn-penalty-winner' + btn2Active + '" id="rank-pen-btn-2-' + m.id + '" onclick="selectPenaltyWinner(\'' + m.id + '\', 2)">' + tn(m.team2) + '</button>'
+                      + '</div>'
+                      + '</div>';
+                  }
+
+                  var liveLinkVal = (m.result && m.result.live_link) ? m.result.live_link : '';
+                  var scoreHtml = '<div style="display:flex;flex-direction:column;align-items:center;width:100%">'
+                    + '<div class="sc">'
+                    + '<input class="sinput" type="number" min="0" max="20" placeholder="–" id="rank-r1-' + m.id + '" value="' + (hasScore ? m.result.score1 : '') + '" oninput="checkInputs(\'' + m.id + '\',null,\'rank-r\')">'
+                    + '<span class="ssep">:</span>'
+                    + '<input class="sinput" type="number" min="0" max="20" placeholder="–" id="rank-r2-' + m.id + '" value="' + (hasScore ? m.result.score2 : '') + '" oninput="checkInputs(\'' + m.id + '\',null,\'rank-r\')">'
+                    + '</div>'
+                    + penaltyHtml
+                    + '<input type="text" class="inp" style="font-size:0.75rem; padding:4px 8px; margin-top:8px; width:100%; max-width:180px; text-align:center;" placeholder="Link do Ao Vivo (YouTube)" id="rank-rlive-' + m.id + '" value="' + liveLinkVal + '">'
+                    + '</div>';
+
+                  var matchStatus = m.result ? m.result.status : null;
+                  var actHtml = '';
+                  if (!hasScore || matchStatus === 'live') {
+                    actHtml = '<button class="btn-save" style="background:rgba(16,185,129,0.15);border-color:#10b981;color:#10b981;" onclick="saveLiveResult(\'' + m.id + '\')"><i data-lucide="radio" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>' + (hasScore ? 'Atualizar Parcial' : 'Salvar Parcial') + '</button>'
+                      + ' <button class="btn-save" onclick="saveFinishResult(\'' + m.id + '\')"><i data-lucide="flag" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Finalizar</button>';
+                  } else if (matchStatus === 'finished') {
+                    actHtml = '<button class="btn-save" style="background:rgba(245,158,11,0.15);border-color:#f59e0b;color:#f59e0b;" onclick="reopenResult(\'' + m.id + '\')"><i data-lucide="rotate-ccw" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Reabrir</button>'
+                      + ' <button class="btn-save" onclick="saveFinishResult(\'' + m.id + '\')"><i data-lucide="save" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Atualizar</button>';
+                  }
+                  if (hasScore) {
+                    actHtml += ' <button class="btn-del" style="margin-left:4px" onclick="clearResult(\'' + m.id + '\')"><i data-lucide="trash-2" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Limpar</button>';
+                  }
+
+                  return '<div class="mc today" style="border-left: 3px solid #ef4444; margin-bottom: 16px;">'
+                    + '<div class="mc-head"><span class="mc-phase">' + phase + ' <span class="badge-status live">AO VIVO</span></span><span class="mc-date">' + fmtTime(m.datetime) + (m.ground ? ' · ' + m.ground : '') + '</span></div>'
+                    + '<div class="mc-body">'
+                    + '  <div class="team-l"><span class="tflag">' + fl(m.team1) + '</span><span class="tname">' + tn(m.team1) + '</span></div>'
+                    + '  ' + scoreHtml
+                    + '  <div class="team-r"><span class="tflag">' + fl(m.team2) + '</span><span class="tname">' + tn(m.team2) + '</span></div>'
+                    + '</div>'
+                    + '<div class="mc-foot" style="justify-content:flex-end; padding: 10px 16px;">'
+                    + '  <div style="display:flex;gap:6px;align-items:center">' + actHtml + '</div>'
+                    + '</div>'
+                    + '</div>';
+                } else {
+                  var score1 = hasScore ? m.result.score1 : '–';
+                  var score2 = hasScore ? m.result.score2 : '–';
+                  var liveUrl = (m.result && m.result.live_link) ? m.result.live_link : 'https://www.youtube.com/@CazeTV';
+                  var isCaze = liveUrl === 'https://www.youtube.com/@CazeTV';
+                  var platformText = isCaze ? 'CazéTV' : 'Assistir ao Vivo';
+                  
+                  return '<div class="mc today" style="border-left: 3px solid #ef4444; margin-bottom: 16px;">'
+                    + '<div class="mc-head"><span class="mc-phase">' + phase + ' <span class="badge-status live">AO VIVO</span></span><span class="mc-date">' + fmtTime(m.datetime) + (m.ground ? ' · ' + m.ground : '') + '</span></div>'
+                    + '<div class="mc-body">'
+                    + '  <div class="team-l"><span class="tflag">' + fl(m.team1) + '</span><span class="tname">' + tn(m.team1) + '</span></div>'
+                    + '  <div style="display:flex;flex-direction:column;align-items:center;width:100%;">'
+                    + '    <div class="sc">'
+                    + '      <div class="sbox" style="border-color:rgba(16,185,129,0.4);color:#10b981;background:rgba(16,185,129,0.08);font-size:1.6rem;">' + score1 + '</div>'
+                    + '      <span class="ssep" style="color:#10b981;">:</span>'
+                    + '      <div class="sbox" style="border-color:rgba(16,185,129,0.4);color:#10b981;background:rgba(16,185,129,0.08);font-size:1.6rem;">' + score2 + '</div>'
+                    + '    </div>'
+                    + '  </div>'
+                    + '  <div class="team-r"><span class="tflag">' + fl(m.team2) + '</span><span class="tname">' + tn(m.team2) + '</span></div>'
+                    + '</div>'
+                    + '<div class="mc-foot" style="justify-content:flex-end; padding: 10px 16px;">'
+                    + '  <a href="' + liveUrl + '" target="_blank" rel="noopener noreferrer"'
+                    + '    style="display:inline-flex;align-items:center;gap:6px;background:var(--primary);color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:0.8rem;font-weight:600;font-family:inherit;text-decoration:none;transition:background 0.2s ease;white-space:nowrap;"'
+                    + '    onmouseover="this.style.background=\'var(--primary-hover)\'"'
+                    + '    onmouseout="this.style.background=\'var(--primary)\'">'
+                    + '    <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:#fff;margin-right:2px;"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>'
+                    + '    ' + platformText
+                    + '  </a>'
+                    + '</div>'
+                    + '</div>';
+                }
               }).join('');
           } else {
             // Render general CazéTV banner
@@ -4314,24 +4392,25 @@
       window.scrollTo(0, scrollPos);
     }
 
-    // ─── Helper: validate score inputs and get penalty winner ────────────────────
+     // ─── Helper: validate score inputs and get penalty winner ────────────────────
     function _getScorePayload(id) {
-      var s1 = (document.getElementById('r1-' + id) || {}).value;
-      var s2 = (document.getElementById('r2-' + id) || {}).value;
+      var isRank = document.getElementById('page-ranking').classList.contains('on');
+      var prefix = isRank ? 'rank-r' : 'r';
+      var s1 = (document.getElementById(prefix + '1-' + id) || {}).value;
+      var s2 = (document.getElementById(prefix + '2-' + id) || {}).value;
       if (s1 === '' || s2 === '') { toast('Digite o placar dos dois times', 'err'); return null; }
       var m = allMatches.find(function (x) { return String(x.id) === String(id); });
       var penalties_winner = null;
       if (m && m.round && !m.round.startsWith('Matchday') && parseInt(s1) === parseInt(s2)) {
-        var btn1 = document.getElementById('pen-btn-1-' + id);
-        var btn2 = document.getElementById('pen-btn-2-' + id);
+        var btn1 = document.getElementById(isRank ? 'rank-pen-btn-1-' + id : 'pen-btn-1-' + id);
+        var btn2 = document.getElementById(isRank ? 'rank-pen-btn-2-' + id : 'pen-btn-2-' + id);
         if (btn1 && btn1.classList.contains('active')) {
           penalties_winner = m.team1;
         } else if (btn2 && btn2.classList.contains('active')) {
           penalties_winner = m.team2;
         }
-        // For live saves in KO matches we allow no penalty winner yet
       }
-      var liveLink = (document.getElementById('rlive-' + id) || {}).value || '';
+      var liveLink = (document.getElementById(isRank ? 'rank-rlive-' + id : 'rlive-' + id) || {}).value || '';
       return { score1: parseInt(s1), score2: parseInt(s2), penalties_winner: penalties_winner, live_link: liveLink };
     }
 
@@ -4342,7 +4421,9 @@
       if (!payload) return;
       payload.status = 'live';
 
-      var btn = document.querySelector('button[onclick="saveLiveResult(\'' + id + '\')"]');
+      var isRank = document.getElementById('page-ranking').classList.contains('on');
+      var activePageId = isRank ? 'page-ranking' : 'page-jogos';
+      var btn = document.querySelector('#' + activePageId + ' button[onclick="saveLiveResult(\'' + id + '\')"]');
       var origHtml = btn ? btn.innerHTML : '';
       if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Salvando...'; lucide.createIcons(); }
 
@@ -4351,7 +4432,11 @@
           if (btn) { btn.disabled = false; btn.innerHTML = origHtml; lucide.createIcons(); }
           if (r && r.error) { toast(r.error, 'err'); return; }
           toast('Placar parcial salvo ⚡ (Ao Vivo)');
-          loadJogosSilently();
+          if (isRank) {
+            loadRanking();
+          } else {
+            loadJogosSilently();
+          }
         });
     }
 
@@ -4361,14 +4446,15 @@
       var payload = _getScorePayload(id);
       if (!payload) return;
 
-      // For KO matches with draw, penalty winner is required to finish
       var m = allMatches.find(function (x) { return String(x.id) === String(id); });
       if (m && m.round && !m.round.startsWith('Matchday') && payload.score1 === payload.score2 && !payload.penalties_winner) {
         toast('Selecione o vencedor nos pênaltis para finalizar', 'err'); return;
       }
       payload.status = 'finished';
 
-      var btn = document.querySelector('button[onclick="saveFinishResult(\'' + id + '\')"]');
+      var isRank = document.getElementById('page-ranking').classList.contains('on');
+      var activePageId = isRank ? 'page-ranking' : 'page-jogos';
+      var btn = document.querySelector('#' + activePageId + ' button[onclick="saveFinishResult(\'' + id + '\')"]');
       var origHtml = btn ? btn.innerHTML : '';
       if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Finalizando...'; lucide.createIcons(); }
 
@@ -4377,30 +4463,40 @@
           if (btn) { btn.disabled = false; btn.innerHTML = origHtml; lucide.createIcons(); }
           if (r && r.error) { toast(r.error, 'err'); return; }
           toast('Partida finalizada ✓');
-          loadJogosSilently();
+          if (isRank) {
+            loadRanking();
+          } else {
+            loadJogosSilently();
+          }
         });
     }
 
     // ─── Reabrir Partida (volta para live) ───────────────────────────────────────
     function reopenResult(id) {
       if (!session || session.type !== 'admin') return;
-      // Keep current stored score, just change status back to live
       var m = allMatches.find(function (x) { return String(x.id) === String(id); });
-      var s1 = (document.getElementById('r1-' + id) || {}).value;
-      var s2 = (document.getElementById('r2-' + id) || {}).value;
+      var isRank = document.getElementById('page-ranking').classList.contains('on');
+      var sPrefix = isRank ? 'rank-r' : 'r';
+      var s1 = (document.getElementById(sPrefix + '1-' + id) || {}).value;
+      var s2 = (document.getElementById(sPrefix + '2-' + id) || {}).value;
       if (s1 === '' || s2 === '') { toast('Placar não encontrado. Edite e use Salvar Parcial.', 'err'); return; }
 
-      var btn = document.querySelector('button[onclick="reopenResult(\'' + id + '\')"]');
+      var activePageId = isRank ? 'page-ranking' : 'page-jogos';
+      var btn = document.querySelector('#' + activePageId + ' button[onclick="reopenResult(\'' + id + '\')"]');
       var origHtml = btn ? btn.innerHTML : '';
       if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Reabrindo...'; lucide.createIcons(); }
 
-      var live_link = (document.getElementById('rlive-' + id) || {}).value || '';
+      var live_link = (document.getElementById(isRank ? 'rank-rlive-' + id : 'rlive-' + id) || {}).value || '';
       apiFetch('PUT', '/api/matches/' + id + '/result', { score1: parseInt(s1), score2: parseInt(s2), status: 'live', live_link: live_link }, { 'x-admin-pin': session.pin })
         .then(function (r) {
           if (btn) { btn.disabled = false; btn.innerHTML = origHtml; lucide.createIcons(); }
           if (r && r.error) { toast(r.error, 'err'); return; }
           toast('Partida reaberta como Ao Vivo ⚡');
-          loadJogosSilently();
+          if (isRank) {
+            loadRanking();
+          } else {
+            loadJogosSilently();
+          }
         });
     }
 
@@ -4408,7 +4504,9 @@
     function clearResult(id) {
       if (!session || session.type !== 'admin') return;
 
-      var btn = document.querySelector('button[onclick="clearResult(\'' + id + '\')"]');
+      var isRank = document.getElementById('page-ranking').classList.contains('on');
+      var activePageId = isRank ? 'page-ranking' : 'page-jogos';
+      var btn = document.querySelector('#' + activePageId + ' button[onclick="clearResult(\'' + id + '\')"]');
       var origHtml = btn ? btn.innerHTML : '';
       if (btn) {
         btn.disabled = true;
@@ -4424,8 +4522,12 @@
             lucide.createIcons();
           }
           if (r && r.error) { toast(r.error, 'err'); return; }
-          toast('Placar removido');
-          loadJogosSilently();
+          toast('Placar removed');
+          if (isRank) {
+            loadRanking();
+          } else {
+            loadJogosSilently();
+          }
         });
     }
 
