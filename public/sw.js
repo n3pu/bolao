@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bolao-unk-v3';
+const CACHE_NAME = 'bolao-unk-v4';
 const ASSETS = [
   '/',
   '/index.html',
@@ -69,6 +69,7 @@ self.addEventListener('push', function(event) {
     body: data.body || "Atualização no Bolão!",
     icon: "/logo.png",
     badge: "/badge.png",
+    color: "#e63946", // Cor de destaque do círculo do badge e textos no painel do Android
     vibrate: [100, 50, 100],
     data: {
       url: data.url || "/"

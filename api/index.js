@@ -90,6 +90,8 @@ async function initDB() {
     .catch(err => console.log('penalties_winner col:', err.message));
   await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'finished';`)
     .catch(err => console.log('status col:', err.message));
+  await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS live_link TEXT;`)
+    .catch(err => console.log('live_link col:', err.message));
   await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'warning';`)
     .catch(err => console.log('banner type col:', err.message));
   // Auto-cleanup comm_log older than 10 days
@@ -214,9 +216,9 @@ module.exports = async function handler(req, res) {
     // GET /matches
     if (url === '/matches' && method === 'GET') {
       const matches = loadMatches();
-      const { rows } = await pool.query('SELECT match_id, score1, score2, penalties_winner, status FROM results');
+      const { rows } = await pool.query('SELECT match_id, score1, score2, penalties_winner, status, live_link FROM results');
       const resMap = {};
-      rows.forEach(r => { resMap[r.match_id] = { score1: r.score1, score2: r.score2, penalties_winner: r.penalties_winner, status: r.status }; });
+      rows.forEach(r => { resMap[r.match_id] = { score1: r.score1, score2: r.score2, penalties_winner: r.penalties_winner, status: r.status, live_link: r.live_link }; });
       return res.status(200).json(matches.map(m => ({
         ...m,
         result: resMap[m.id] || null,
@@ -231,7 +233,7 @@ module.exports = async function handler(req, res) {
       if (String(req.headers['x-admin-pin']) !== adminPin)
         return res.status(401).json({ error: 'PIN de admin incorreto' });
       const id = matchResult[1];
-      const { score1, score2, penalties_winner, status } = body;
+      const { score1, score2, penalties_winner, status, live_link } = body;
       if (score1 === null || score1 === undefined) {
         await pool.query('DELETE FROM results WHERE match_id=$1', [id]);
         const matches = loadMatches();
@@ -241,9 +243,9 @@ module.exports = async function handler(req, res) {
         }
       } else {
         await pool.query(
-          `INSERT INTO results (match_id,score1,score2,penalties_winner,status) VALUES ($1,$2,$3,$4,$5)
-           ON CONFLICT (match_id) DO UPDATE SET score1=$2,score2=$3,penalties_winner=$4,status=$5`,
-          [id, score1, score2, penalties_winner || null, status || 'finished']
+          `INSERT INTO results (match_id,score1,score2,penalties_winner,status,live_link) VALUES ($1,$2,$3,$4,$5,$6)
+           ON CONFLICT (match_id) DO UPDATE SET score1=$2,score2=$3,penalties_winner=$4,status=$5,live_link=$6`,
+          [id, score1, score2, penalties_winner || null, status || 'finished', live_link || null]
         );
         const matches = loadMatches();
         const m = matches.find(x => String(x.id) === String(id));

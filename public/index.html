@@ -267,6 +267,10 @@
       color: var(--muted-foreground);
       text-transform: uppercase;
       border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--card);
+      z-index: 2;
     }
 
     .rtable td {
@@ -2485,7 +2489,7 @@
           <i data-lucide="info" style="width: 14px; height: 14px; flex-shrink: 0;"></i>
           <span><strong>Classificação parcial:</strong> Pontuação calculada com resultados provisórios de partidas ao vivo.</span>
         </div>
-        <div class="table-container">
+        <div class="table-container" style="max-height: 525px; overflow-y: auto;">
           <table class="rtable">
             <thead>
               <tr>
@@ -2605,30 +2609,9 @@
 
 
 
-      <!-- Link CazéTV -->
-      <div class="card" style="margin-top: 24px;">
-        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <svg viewBox="0 0 24 24" style="width:24px;height:24px;fill:var(--primary);flex-shrink:0;">
-              <path
-                d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-            </svg>
-            <div>
-              <div style="font-weight: 600; font-size: 0.95rem;">CazéTV</div>
-              <div style="font-size: 0.78rem; color: var(--muted-foreground);">Assista os jogos ao vivo no YouTube</div>
-            </div>
-          </div>
-          <a href="https://www.youtube.com/@CazeTV" target="_blank" rel="noopener noreferrer"
-            style="display:inline-flex;align-items:center;gap:6px;background:var(--primary);color:#fff;border:none;border-radius:6px;padding:9px 18px;font-size:0.85rem;font-weight:600;font-family:inherit;text-decoration:none;transition:background 0.2s ease;white-space:nowrap;"
-            onmouseover="this.style.background='var(--primary-hover)'"
-            onmouseout="this.style.background='var(--primary)'">
-            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:#fff;">
-              <path
-                d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-            </svg>
-            Assistir ao Vivo
-          </a>
-        </div>
+      <!-- Live Matches / Youtube Section -->
+      <div id="live-matches-ranking-section" style="margin-top: 24px; display: flex; flex-direction: column; gap: 16px;">
+        <!-- Filled dynamically by JS -->
       </div>
     </div>
 
@@ -3851,6 +3834,76 @@
         var banner = document.getElementById('live-ranking-banner');
         if (banner) banner.style.display = hasLive ? 'flex' : 'none';
 
+        // Render live matches or YouTube banner
+        var liveMatches = matches.filter(function (m) {
+          return m.locked && (!m.result || m.result.status === 'live');
+        });
+        
+        var liveSection = document.getElementById('live-matches-ranking-section');
+        if (liveSection) {
+          if (liveMatches.length > 0) {
+            liveSection.innerHTML = '<div style="font-family:Oswald,sans-serif;font-size:1.1rem;font-weight:600;letter-spacing:0.5px;color:var(--foreground);text-transform:uppercase;margin-top:16px;margin-bottom:8px;display:flex;align-items:center;gap:8px;">'
+              + '<span class="pulse-dot" style="background:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,0.7);display:inline-block;width:8px;height:8px;border-radius:50%;"></span>Jogos ao Vivo</div>'
+              + liveMatches.map(function (m) {
+                var hasScore = m.result && m.result.score1 !== null && m.result.score2 !== null;
+                var score1 = hasScore ? m.result.score1 : '–';
+                var score2 = hasScore ? m.result.score2 : '–';
+                var liveUrl = (m.result && m.result.live_link) ? m.result.live_link : 'https://www.youtube.com/@CazeTV';
+                var isCaze = liveUrl === 'https://www.youtube.com/@CazeTV';
+                var platformText = isCaze ? 'CazéTV' : 'Assistir ao Vivo';
+                var phase = m.group || (m.round && m.round.replace(/Matchday \d+/, '').trim()) || m.round;
+                
+                return '<div class="mc today" style="border-left: 3px solid #ef4444; margin-bottom: 16px;">'
+                  + '<div class="mc-head"><span class="mc-phase">' + phase + ' <span class="badge-status live">AO VIVO</span></span><span class="mc-date">' + fmtTime(m.datetime) + (m.ground ? ' · ' + m.ground : '') + '</span></div>'
+                  + '<div class="mc-body">'
+                  + '  <div class="team-l"><span class="tflag">' + fl(m.team1) + '</span><span class="tname">' + tn(m.team1) + '</span></div>'
+                  + '  <div style="display:flex;flex-direction:column;align-items:center;width:100%;">'
+                  + '    <div class="sc">'
+                  + '      <div class="sbox" style="border-color:rgba(16,185,129,0.4);color:#10b981;background:rgba(16,185,129,0.08);font-size:1.6rem;">' + score1 + '</div>'
+                  + '      <span class="ssep" style="color:#10b981;">:</span>'
+                  + '      <div class="sbox" style="border-color:rgba(16,185,129,0.4);color:#10b981;background:rgba(16,185,129,0.08);font-size:1.6rem;">' + score2 + '</div>'
+                  + '    </div>'
+                  + '  </div>'
+                  + '  <div class="team-r"><span class="tflag">' + fl(m.team2) + '</span><span class="tname">' + tn(m.team2) + '</span></div>'
+                  + '</div>'
+                  + '<div class="mc-foot" style="justify-content:flex-end; padding: 10px 16px;">'
+                  + '  <a href="' + liveUrl + '" target="_blank" rel="noopener noreferrer"'
+                  + '    style="display:inline-flex;align-items:center;gap:6px;background:var(--primary);color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:0.8rem;font-weight:600;font-family:inherit;text-decoration:none;transition:background 0.2s ease;white-space:nowrap;"'
+                  + '    onmouseover="this.style.background=\'var(--primary-hover)\'"'
+                  + '    onmouseout="this.style.background=\'var(--primary)\'">'
+                  + '    <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:#fff;margin-right:2px;"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>'
+                  + '    ' + platformText
+                  + '  </a>'
+                  + '</div>'
+                  + '</div>';
+              }).join('');
+          } else {
+            // Render general CazéTV banner
+            liveSection.innerHTML = '<div class="card">'
+              + '<div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">'
+              + '  <div style="display: flex; align-items: center; gap: 10px;">'
+              + '    <svg viewBox="0 0 24 24" style="width:24px;height:24px;fill:var(--primary);flex-shrink:0;">'
+              + '      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />'
+              + '    </svg>'
+              + '    <div>'
+              + '      <div style="font-weight: 600; font-size: 0.95rem;">CazéTV</div>'
+              + '      <div style="font-size: 0.78rem; color: var(--muted-foreground);">Assista os jogos ao vivo no YouTube</div>'
+              + '    </div>'
+              + '  </div>'
+              + '  <a href="https://www.youtube.com/@CazeTV" target="_blank" rel="noopener noreferrer"'
+              + '    style="display:inline-flex;align-items:center;gap:6px;background:var(--primary);color:#fff;border:none;border-radius:6px;padding:9px 18px;font-size:0.85rem;font-weight:600;font-family:inherit;text-decoration:none;transition:background 0.2s ease;white-space:nowrap;"'
+              + '    onmouseover="this.style.background=\'var(--primary-hover)\'"'
+              + '    onmouseout="this.style.background=\'var(--primary)\'">'
+              + '    <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:#fff;">'
+              + '      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />'
+              + '    </svg>'
+              + '    Assistir ao Vivo'
+              + '  </a>'
+              + '</div>'
+              + '</div>';
+          }
+        }
+
         if (!data || data._err) {
           tbody.innerHTML = '<tr><td colspan="6"><div class="empty">Erro ao conectar ao servidor.</div></td></tr>';
           return;
@@ -4069,6 +4122,7 @@
                 + '</div>';
             }
 
+            var liveLinkVal = (m.result && m.result.live_link) ? m.result.live_link : '';
             scoreHtml = '<div style="display:flex;flex-direction:column;align-items:center;width:100%">'
               + '<div class="sc">'
               + '<input class="sinput" type="number" min="0" max="20" placeholder="–" id="r1-' + m.id + '" value="' + (hasResult && m.result.score1 !== null && m.result.score1 !== undefined ? m.result.score1 : '') + '" oninput="checkInputs(\'' + m.id + '\',null,\'r\')">'
@@ -4076,6 +4130,7 @@
               + '<input class="sinput" type="number" min="0" max="20" placeholder="–" id="r2-' + m.id + '" value="' + (hasResult && m.result.score2 !== null && m.result.score2 !== undefined ? m.result.score2 : '') + '" oninput="checkInputs(\'' + m.id + '\',null,\'r\')">'
               + '</div>'
               + penaltyHtml
+              + '<input type="text" class="inp" style="font-size:0.75rem; padding:4px 8px; margin-top:8px; width:100%; max-width:180px; text-align:center;" placeholder="Link do Ao Vivo (YouTube)" id="rlive-' + m.id + '" value="' + liveLinkVal + '">'
               + '</div>';
           } else if (hasResult && resultStatus === 'live') {
             // Match is LIVE (partial score) - show score with live styling, not as definitive
@@ -4276,7 +4331,8 @@
         }
         // For live saves in KO matches we allow no penalty winner yet
       }
-      return { score1: parseInt(s1), score2: parseInt(s2), penalties_winner: penalties_winner };
+      var liveLink = (document.getElementById('rlive-' + id) || {}).value || '';
+      return { score1: parseInt(s1), score2: parseInt(s2), penalties_winner: penalties_winner, live_link: liveLink };
     }
 
     // ─── Salvar Parcial (AO VIVO) ────────────────────────────────────────────────
@@ -4338,7 +4394,8 @@
       var origHtml = btn ? btn.innerHTML : '';
       if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Reabrindo...'; lucide.createIcons(); }
 
-      apiFetch('PUT', '/api/matches/' + id + '/result', { score1: parseInt(s1), score2: parseInt(s2), status: 'live' }, { 'x-admin-pin': session.pin })
+      var live_link = (document.getElementById('rlive-' + id) || {}).value || '';
+      apiFetch('PUT', '/api/matches/' + id + '/result', { score1: parseInt(s1), score2: parseInt(s2), status: 'live', live_link: live_link }, { 'x-admin-pin': session.pin })
         .then(function (r) {
           if (btn) { btn.disabled = false; btn.innerHTML = origHtml; lucide.createIcons(); }
           if (r && r.error) { toast(r.error, 'err'); return; }
