@@ -2,6 +2,16 @@ const { Pool } = require('pg');
 const { v4: uuidv4 } = require('uuid');
 const nodePath = require('path');
 const fs = require('fs');
+const webpush = require('web-push');
+
+const vapidPublicKey = process.env.VAPID_PUBLIC_KEY || 'BD_rCgeB7LhbMw-lGqhXaMMfCt6gl4QQmyU1oaqP_OrahRTSgeRR5TLaAN7Bwi1kjBb0XMPo_0RNJWNKd0qa9Y8';
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY || 'HJPamHE9_05AexPI-elL9pGS8-Q8lLD01WIlULd5cls';
+
+webpush.setVapidDetails(
+  'mailto:contato@bolao.unk',
+  vapidPublicKey,
+  vapidPrivateKey
+);
 
 const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
 const isLocal = dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1');
@@ -33,6 +43,14 @@ async function initDB() {
     );
     CREATE TABLE IF NOT EXISTS results (
       match_id TEXT PRIMARY KEY, score1 INTEGER, score2 INTEGER
+    );
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id TEXT PRIMARY KEY,
+      participant_id TEXT,
+      endpoint TEXT UNIQUE NOT NULL,
+      keys_auth TEXT NOT NULL,
+      keys_p256dh TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
   // Ensure columns exist for older deployments
@@ -565,6 +583,72 @@ module.exports = async function handler(req, res) {
         }
       }
       return res.status(200).json({ ok: true });
+    }
+
+
+    // GET /push/vapid-public-key
+    if (url === '/push/vapid-public-key' && method === 'GET') {
+      return res.status(200).json({ publicKey: vapidPublicKey });
+    }
+
+    // POST /push/subscribe
+    if (url === '/push/subscribe' && method === 'POST') {
+      const { subscription, participantId } = body;
+      if (!subscription || !subscription.endpoint) {
+        return res.status(400).json({ error: 'Assinatura inválida' });
+      }
+      const id = uuidv4();
+      const auth = subscription.keys ? subscription.keys.auth : '';
+      const p256dh = subscription.keys ? subscription.keys.p256dh : '';
+      
+      await pool.query(`
+        INSERT INTO push_subscriptions (id, participant_id, endpoint, keys_auth, keys_p256dh)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (endpoint) DO UPDATE SET participant_id = $2, keys_auth = $4, keys_p256dh = $5
+      `, [id, participantId || null, subscription.endpoint, auth, p256dh]);
+      
+      return res.status(200).json({ ok: true });
+    }
+
+    // POST /push/send (Requires admin-pin check)
+    if (url === '/push/send' && method === 'POST') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+        
+      const { title, body: msgBody, url: clickUrl } = body;
+      if (!title || !msgBody) {
+        return res.status(400).json({ error: 'Título e mensagem obrigatórios' });
+      }
+      
+      const { rows } = await pool.query('SELECT endpoint, keys_auth as "auth", keys_p256dh as "p256dh" FROM push_subscriptions');
+      
+      const payload = JSON.stringify({
+        title: title,
+        body: msgBody,
+        url: clickUrl || '/'
+      });
+      
+      const sendPromises = rows.map(sub => {
+        const pushSubscription = {
+          endpoint: sub.endpoint,
+          keys: {
+            auth: sub.auth,
+            p256dh: sub.p256dh
+          }
+        };
+        return webpush.sendNotification(pushSubscription, payload)
+          .catch(err => {
+            console.error('Erro enviando push para endpoint:', sub.endpoint, err.message);
+            if (err.statusCode === 410 || err.statusCode === 404) {
+              return pool.query('DELETE FROM push_subscriptions WHERE endpoint = $1', [sub.endpoint])
+                .catch(e => console.error('Erro deletando push subscription expirada:', e.message));
+            }
+          });
+      });
+      
+      await Promise.all(sendPromises);
+      return res.status(200).json({ ok: true, count: rows.length });
     }
 
 

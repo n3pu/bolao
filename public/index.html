@@ -6,6 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bolão UNK</title>
   <link rel="icon" type="image/png" href="/logo.png">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Bolão UNK">
+  <link rel="apple-touch-icon" href="/logo.png">
   <link
     href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Inter:wght@400;500;600&display=swap"
     rel="stylesheet">
@@ -2506,19 +2511,34 @@
       
       <!-- Referral Card on page-apostas -->
       <div class="card" id="participant-referral-card" style="margin-bottom: 20px; background: rgba(201, 168, 76, 0.02); border-color: rgba(201, 168, 76, 0.2);">
-        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
-          <div>
-            <div style="font-family: 'Oswald', sans-serif; font-size: 1.1rem; color: var(--gold); display: flex; align-items: center; gap: 6px;">
-              <i data-lucide="gift" style="width: 18px; height: 18px;"></i> Indique e Ganhe!
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.03); padding-bottom: 12px;">
+            <div>
+              <div style="font-family: 'Oswald', sans-serif; font-size: 1.1rem; color: var(--gold); display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="gift" style="width: 18px; height: 18px;"></i> Indique e Ganhe!
+              </div>
+              <div style="font-size: 0.8rem; color: var(--muted-foreground); margin-top: 2px;">
+                Copie seu link de indicação e envie para seus amigos. Você ganha bônus por cada indicação ativa!
+              </div>
             </div>
-            <div style="font-size: 0.8rem; color: var(--muted-foreground); margin-top: 2px;">
-              Copie seu link de indicação e envie para seus amigos. Você ganha bônus por cada indicação ativa!
+            <div style="display: flex; gap: 8px; align-items: center; width: 100%; max-width: 480px;">
+              <input class="inp" id="share-ref-link-apostas" readonly style="flex: 1; font-size: 0.8rem; padding: 8px 12px; background: #09090b;" onclick="this.select()">
+              <button class="btn-add" onclick="copyReferralLink('share-ref-link-apostas')" style="padding: 8px 16px; background: var(--gold); border-color: var(--gold); color: #000; font-weight: 600; display:flex; align-items:center; gap:4px; justify-content:center;">
+                <i data-lucide="copy" style="width: 14px; height: 14px;"></i> Copiar
+              </button>
             </div>
           </div>
-          <div style="display: flex; gap: 8px; align-items: center; width: 100%; max-width: 480px;">
-            <input class="inp" id="share-ref-link-apostas" readonly style="flex: 1; font-size: 0.8rem; padding: 8px 12px; background: #09090b;" onclick="this.select()">
-            <button class="btn-add" onclick="copyReferralLink('share-ref-link-apostas')" style="padding: 8px 16px; background: var(--gold); border-color: var(--gold); color: #000; font-weight: 600; display:flex; align-items:center; gap:4px; justify-content:center;">
-              <i data-lucide="copy" style="width: 14px; height: 14px;"></i> Copiar
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <div style="font-family: 'Oswald', sans-serif; font-size: 1.1rem; color: #60a5fa; display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="bell" style="width: 18px; height: 18px;"></i> Notificações do Bolão
+              </div>
+              <div style="font-size: 0.8rem; color: var(--muted-foreground); margin-top: 2px;">
+                Fique sabendo imediatamente quando saírem novos jogos, resultados e avisos importantes neste dispositivo!
+              </div>
+            </div>
+            <button class="btn-add" id="btn-push-subscribe" onclick="togglePushSubscription()" style="padding: 8px 16px; background: #2563eb; border-color: #2563eb; color: #fff; font-weight: 600; display:flex; align-items:center; gap:6px; justify-content:center; min-width: 180px;">
+              <i data-lucide="bell"></i> Receber Alertas
             </button>
           </div>
         </div>
@@ -2657,6 +2677,24 @@
           <button class="btn-add" onclick="saveArrecadado()"><i data-lucide="save"
               style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i>Salvar
             Valor</button>
+        </div>
+      </div>
+
+      <!-- DISPARO DE NOTIFICAÇÃO PUSH (ADMIN) -->
+      <div class="card" style="border-color: rgba(96, 165, 250, 0.4); background: rgba(96, 165, 250, 0.01);">
+        <div class="sub-title" style="color: #60a5fa; display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+          <i data-lucide="send" style="width:14px; height:14px;"></i> Enviar Notificação Push
+        </div>
+        <div style="font-size: 0.8rem; color: var(--muted-foreground); margin-bottom: 14px;">
+          Envie alertas instantâneos diretamente para as telas de todos os participantes cadastrados e inscritos no sistema.
+        </div>
+        <div class="form-row" style="flex-direction: column; align-items: stretch; gap: 10px;">
+          <input class="inp" id="push-title" placeholder="Título (Ex: Novo Resultado Disponível!)" style="width:100%">
+          <textarea class="inp" id="push-body" placeholder="Mensagem da notificação (Ex: Confira o placar do jogo do Brasil no ranking.)" style="width:100%; height:64px; resize:none; font-family:inherit;"></textarea>
+          <input class="inp" id="push-url" placeholder="Link para abrir ao clicar (opcional - Ex: /#jogos)" style="width:100%">
+          <button class="btn-add" id="btn-send-push" onclick="sendPushNotification()" style="background:#2563eb; border-color:#3b82f6; color:#fff; align-self: flex-start; display:flex; align-items:center; gap:6px; margin:0;">
+            <i data-lucide="bell-ring"></i> Enviar para Todos
+          </button>
         </div>
       </div>
 
@@ -3894,6 +3932,9 @@
         var shareApostas = document.getElementById('share-ref-link-apostas');
         if (shareApostas) {
           shareApostas.value = window.location.origin + '?ref=' + session.id;
+        }
+        if (typeof initPushNotifications === 'function') {
+          initPushNotifications();
         }
       });
     }
@@ -5214,6 +5255,7 @@
       if (refId) {
         openReferralSignup(refId);
       }
+      initPushNotifications();
     });
 
     // ─── Referral System Helpers ──────────────────────────────────────────────────
@@ -5636,6 +5678,162 @@
         toast('Solicitação de "' + name + '" recusada.');
         loadAdmin();
       });
+    }
+
+    // ─── Web Push & PWA Notifications ──────────────────────────────────────────────
+    var isPushSubscribed = false;
+    var swRegistration = null;
+
+    function initPushNotifications() {
+      if ('serviceWorker' in navigator && 'PushManager' in window) {
+        navigator.serviceWorker.register('/sw.js')
+          .then(function(reg) {
+            swRegistration = reg;
+            reg.pushManager.getSubscription()
+              .then(function(subscription) {
+                isPushSubscribed = (subscription !== null);
+                updatePushSubscriptionButton();
+                if (isPushSubscribed && session && session.type === 'participant') {
+                  syncPushSubscription(subscription);
+                }
+              });
+          })
+          .catch(function(err) {
+            console.error('Service Worker registration failed:', err);
+          });
+      } else {
+        var btn = document.getElementById('btn-push-subscribe');
+        if (btn) btn.style.display = 'none';
+      }
+    }
+
+    function updatePushSubscriptionButton() {
+      var btn = document.getElementById('btn-push-subscribe');
+      if (!btn) return;
+      
+      if (isPushSubscribed) {
+        btn.innerHTML = '<i data-lucide="bell-off" style="width: 14px; height: 14px; margin-right: 6px; display: inline-block; vertical-align: -2px;"></i> Desativar Alertas';
+        btn.style.background = '#27272a';
+        btn.style.borderColor = 'var(--border)';
+      } else {
+        btn.innerHTML = '<i data-lucide="bell" style="width: 14px; height: 14px; margin-right: 6px; display: inline-block; vertical-align: -2px;"></i> Receber Alertas';
+        btn.style.background = '#2563eb';
+        btn.style.borderColor = '#2563eb';
+      }
+      lucide.createIcons();
+    }
+
+    function togglePushSubscription() {
+      var btn = document.getElementById('btn-push-subscribe');
+      if (!btn || !swRegistration) return;
+      
+      btn.disabled = true;
+      
+      if (isPushSubscribed) {
+        swRegistration.pushManager.getSubscription()
+          .then(function(subscription) {
+            if (subscription) {
+              subscription.unsubscribe().then(function(successful) {
+                if (successful) {
+                  isPushSubscribed = false;
+                  updatePushSubscriptionButton();
+                  toast('Alertas desativados.');
+                }
+                btn.disabled = false;
+              }).catch(function(err) {
+                console.error('Error unsubscribing:', err);
+                btn.disabled = false;
+              });
+            } else {
+              btn.disabled = false;
+            }
+          });
+      } else {
+        apiFetch('GET', '/api/push/vapid-public-key').then(function(r) {
+          if (!r || !r.publicKey) {
+            toast('Erro de conexão ao servidor push.', 'err');
+            btn.disabled = false;
+            return;
+          }
+          
+          var convertedKey = urlBase64ToUint8Array(r.publicKey);
+          swRegistration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: convertedKey
+          })
+          .then(function(subscription) {
+            isPushSubscribed = true;
+            updatePushSubscriptionButton();
+            btn.disabled = false;
+            syncPushSubscription(subscription);
+            toast('Você receberá alertas neste dispositivo!');
+          })
+          .catch(function(err) {
+            console.error('Failed to subscribe:', err);
+            btn.disabled = false;
+            if (Notification.permission === 'denied') {
+              toast('Permissão de notificações negada pelo navegador.', 'err');
+            } else {
+              toast('Erro ao ativar notificações.', 'err');
+            }
+          });
+        });
+      }
+    }
+
+    function syncPushSubscription(subscription) {
+      var participantId = (session && session.type === 'participant') ? session.id : null;
+      apiFetch('POST', '/api/push/subscribe', {
+        subscription: subscription,
+        participantId: participantId
+      });
+    }
+
+    function sendPushNotification() {
+      var title = document.getElementById('push-title').value.trim();
+      var body = document.getElementById('push-body').value.trim();
+      var url = document.getElementById('push-url').value.trim();
+      
+      if (!title || !body) {
+        toast('Preencha o título e a mensagem.', 'err');
+        return;
+      }
+      
+      var btn = document.getElementById('btn-send-push');
+      var origHtml = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i> Enviando...';
+        lucide.createIcons();
+      }
+      
+      apiFetch('POST', '/api/push/send', {
+        title: title,
+        body: body,
+        url: url || '/'
+      }, { 'x-admin-pin': session.pin }).then(function(r) {
+        if (btn) { btn.disabled = false; btn.innerHTML = origHtml; lucide.createIcons(); }
+        if (r && r.error) { toast(r.error, 'err'); return; }
+        
+        document.getElementById('push-title').value = '';
+        document.getElementById('push-body').value = '';
+        document.getElementById('push-url').value = '';
+        
+        toast('Notificação enviada com sucesso!');
+      });
+    }
+
+    function urlBase64ToUint8Array(base64String) {
+      var padding = '='.repeat((4 - base64String.length % 4) % 4);
+      var base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/');
+      var rawData = window.atob(base64);
+      var outputArray = new Uint8Array(rawData.length);
+      for (var i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
     }
 
     [0, 1, 2, 3].forEach(function (i) {
