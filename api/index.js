@@ -4,14 +4,18 @@ const nodePath = require('path');
 const fs = require('fs');
 const webpush = require('web-push');
 
-const vapidPublicKey = process.env.VAPID_PUBLIC_KEY || 'BD_rCgeB7LhbMw-lGqhXaMMfCt6gl4QQmyU1oaqP_OrahRTSgeRR5TLaAN7Bwi1kjBb0XMPo_0RNJWNKd0qa9Y8';
-const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY || 'HJPamHE9_05AexPI-elL9pGS8-Q8lLD01WIlULd5cls';
+const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
 
-webpush.setVapidDetails(
-  'mailto:contato@bolao.unk',
-  vapidPublicKey,
-  vapidPrivateKey
-);
+if (vapidPublicKey && vapidPrivateKey) {
+  webpush.setVapidDetails(
+    'mailto:contato@bolao.unk',
+    vapidPublicKey,
+    vapidPrivateKey
+  );
+} else {
+  console.warn('VAPID keys not configured in environment variables.');
+}
 
 const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
 const isLocal = dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1');
@@ -245,30 +249,31 @@ module.exports = async function handler(req, res) {
       const { rows } = await pool.query('SELECT id, name, phone, cotas, referred_by FROM participants WHERE approved = TRUE ORDER BY name');
       return res.status(200).json(rows);
     }
-
-    // GET /participants/pending
+    // GET /participants/pending
     if (url === '/participants/pending' && method === 'GET') {
       const adminPin = await getAdminPin();
       if (String(req.headers['x-admin-pin']) !== adminPin)
         return res.status(401).json({ error: 'PIN de admin incorreto' });
-      const { rows } = await pool.query('SELECT id, name, phone, referred_by, approved FROM participants WHERE approved = FALSE ORDER BY name');
+      const { rows } = await pool.query('SELECT id, name, phone, cotas, referred_by, approved FROM participants WHERE approved = FALSE ORDER BY name');
       return res.status(200).json(rows);
     }
 
     // POST /participants/request (Public referral request)
     if (url === '/participants/request' && method === 'POST') {
-      const { name, pin, phone, referred_by } = body;
+      const { name, pin, phone, cotas, referred_by } = body;
       if (!name?.trim()) return res.status(400).json({ error: 'Nome obrigatório' });
       if (!pin || String(pin).length < 4) return res.status(400).json({ error: 'PIN deve ter pelo menos 4 dígitos' });
       const exists = await pool.query('SELECT id FROM participants WHERE LOWER(name)=LOWER($1)', [name]);
       if (exists.rows.length) return res.status(400).json({ error: 'Participante já existe' });
       const id = uuidv4();
       const cleanPhone = phone ? String(phone).replace(/\D/g, '') : null;
+      let cotasVal = parseInt(cotas !== undefined ? cotas : 1);
+      if (isNaN(cotasVal) || cotasVal < 1) cotasVal = 1;
       
       // Inserts with approved=FALSE
-      await pool.query('INSERT INTO participants (id,name,pin,phone,cotas,referred_by,approved) VALUES ($1,$2,$3,$4,1,$5,FALSE)', 
-        [id, name.trim(), String(pin), cleanPhone || null, referred_by || null]);
-      return res.status(200).json({ id, name: name.trim(), referred_by });
+      await pool.query('INSERT INTO participants (id,name,pin,phone,cotas,referred_by,approved) VALUES ($1,$2,$3,$4,$5,$6,FALSE)', 
+        [id, name.trim(), String(pin), cleanPhone || null, cotasVal, referred_by || null]);
+      return res.status(200).json({ id, name: name.trim(), cotas: cotasVal, referred_by });
     }
 
     // PUT /participants/:id/approve
@@ -588,6 +593,9 @@ module.exports = async function handler(req, res) {
 
     // GET /push/vapid-public-key
     if (url === '/push/vapid-public-key' && method === 'GET') {
+      if (!vapidPublicKey) {
+        return res.status(500).json({ error: 'Chaves VAPID não configuradas no servidor.' });
+      }
       return res.status(200).json({ publicKey: vapidPublicKey });
     }
 
@@ -615,6 +623,10 @@ module.exports = async function handler(req, res) {
       const adminPin = await getAdminPin();
       if (String(req.headers['x-admin-pin']) !== adminPin)
         return res.status(401).json({ error: 'PIN de admin incorreto' });
+        
+      if (!vapidPublicKey || !vapidPrivateKey) {
+        return res.status(500).json({ error: 'Chaves VAPID não configuradas no servidor.' });
+      }
         
       const { title, body: msgBody, url: clickUrl } = body;
       if (!title || !msgBody) {

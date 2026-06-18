@@ -1774,6 +1774,7 @@
       align-items: center;
       gap: 5px;
     }
+
     .badge-status.live::before {
       content: '';
       display: inline-block;
@@ -1783,10 +1784,22 @@
       background: #10b981;
       animation: pulse-live 1.5s infinite;
     }
+
     @keyframes pulse-live {
-      0% { transform: scale(0.85); opacity: 0.6; }
-      50% { transform: scale(1.25); opacity: 1; }
-      100% { transform: scale(0.85); opacity: 0.6; }
+      0% {
+        transform: scale(0.85);
+        opacity: 0.6;
+      }
+
+      50% {
+        transform: scale(1.25);
+        opacity: 1;
+      }
+
+      100% {
+        transform: scale(0.85);
+        opacity: 0.6;
+      }
     }
 
     /* Popover styles */
@@ -2150,10 +2163,12 @@
       transition: all 0.2s ease;
       white-space: nowrap;
     }
+
     .btn-penalty-winner:hover {
       color: var(--foreground);
       border-color: var(--muted-foreground);
     }
+
     .btn-penalty-winner.active {
       background: var(--gold);
       color: #000;
@@ -2168,7 +2183,7 @@
   <div class="top-countdown-banner" id="countdown-banner">
     <div class="banner-content">
       <i data-lucide="zap" class="banner-icon"></i>
-      <span>A ESTREIA DO BRASIL COMEÇA EM:</span>
+      <span>A ESTREIA DO BOLÃO COMEÇA EM:</span>
       <span id="countdown-timer-banner" class="banner-timer">Carregando...</span>
       <span style="font-size:0.72rem;opacity:0.8;margin-left:4px;">(Apostas anteriores não contam para o Ranking)</span>
     </div>
@@ -2204,7 +2219,8 @@
             <div class="popover-item"><span>🥇 1º Colocado (55%):</span> <strong id="pop-val-1">R$ 0,00</strong></div>
             <div class="popover-item"><span>🥈 2º Colocado (25%):</span> <strong id="pop-val-2">R$ 0,00</strong></div>
             <div class="popover-item"><span>🥉 3º Colocado (10%):</span> <strong id="pop-val-3">R$ 0,00</strong></div>
-            <div class="popover-item"><span>📢 Fundo Indicação (2%):</span> <strong id="pop-val-referral">R$ 0,00</strong></div>
+            <div class="popover-item"><span>📢 Fundo Indicação (2%):</span> <strong id="pop-val-referral">R$
+                0,00</strong></div>
             <div class="popover-item" style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;">
               <span>⚙️ Taxa Admin (8%):</span> <strong id="pop-val-admin">R$ 0,00</strong>
             </div>
@@ -2214,6 +2230,9 @@
 
       <div class="h-right">
         <div id="session-info" style="display:none; display: flex; align-items: center;">
+          <button id="btn-push-subscribe-header" onclick="togglePushSubscription()" title="Ativar Alertas" style="display: none; background:none; border:none; color:var(--muted-foreground); margin-right:12px; cursor:pointer; padding:6px; transition:color 0.2s; align-items:center; justify-content:center;">
+            <i data-lucide="bell" style="width:16px; height:16px;"></i>
+          </button>
           <span class="session-txt" id="session-label" style="margin-right: 10px;"></span>
           <button class="btn-sm" onclick="logout()"><i data-lucide="log-out"
               style="width: 12px; height: 12px; margin-right: 4px; display: inline-block; vertical-align: -1px;"></i>Sair</button>
@@ -2231,7 +2250,9 @@
         <span><i data-lucide="trophy"
             style="width: 20px; height: 20px; margin-right: 10px; display: inline-block; vertical-align: -3px; color: var(--primary)"></i>Ranking</span>
         <div style="display:flex; gap:10px; align-items:center;">
-          <button id="btn-show-podium" class="rules-trigger" style="display:none; color:var(--gold); border-color:rgba(201, 168, 76, 0.4); background:rgba(201, 168, 76, 0.05);" onclick="testPodium()">
+          <button id="btn-show-podium" class="rules-trigger"
+            style="display:none; color:var(--gold); border-color:rgba(201, 168, 76, 0.4); background:rgba(201, 168, 76, 0.05);"
+            onclick="testPodium()">
             <i data-lucide="trophy" style="width:13px;height:13px;color:var(--gold);"></i>
             Ver Pódio
           </button>
@@ -2262,12 +2283,32 @@
                 </div>
               </div>
               <div class="rules-note">
-                ⚠️ Apenas apostas em jogos a partir da estreia do Brasil (19/jun) contam para o ranking.
+                ⚠️ Apenas apostas em jogos a partir do jogo do Brasil (19/jun) contam para o ranking.
               </div>
             </div>
           </button>
         </div>
       </div>
+
+      <!-- Referral Card (Ranking) -->
+      <div class="card participant-referral-card"
+        style="display: none; margin-bottom: 24px; background: rgba(201, 168, 76, 0.03); border-color: rgba(201, 168, 76, 0.15); padding: 12px 16px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; width: 100%;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="gift" style="width: 16px; height: 16px; color: var(--gold);"></i>
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--gold);">Indique amigos e ganhe bônus:</span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center; flex: 1; min-width: 220px; max-width: 400px;">
+            <input class="inp share-ref-link-input" id="share-ref-link-ranking" readonly
+              style="flex: 1; font-size: 0.75rem; padding: 5px 10px; background: #09090b; height: 30px;" onclick="this.select()">
+            <button class="btn-add" onclick="copyReferralLink('share-ref-link-ranking')"
+              style="padding: 0 12px; background: var(--gold); border-color: var(--gold); color: #000; font-size: 0.75rem; font-weight: 600; display:flex; align-items:center; gap:4px; justify-content:center; height: 30px; margin: 0; min-width: 80px;">
+              <i data-lucide="copy" style="width: 12px; height: 12px;"></i> Copiar
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="table-container">
           <table class="rtable">
@@ -2387,11 +2428,16 @@
         </div>
       </div>
 
+
+
       <!-- Link CazéTV -->
       <div class="card" style="margin-top: 24px;">
         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
           <div style="display: flex; align-items: center; gap: 10px;">
-            <svg viewBox="0 0 24 24" style="width:24px;height:24px;fill:var(--primary);flex-shrink:0;"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+            <svg viewBox="0 0 24 24" style="width:24px;height:24px;fill:var(--primary);flex-shrink:0;">
+              <path
+                d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+            </svg>
             <div>
               <div style="font-weight: 600; font-size: 0.95rem;">CazéTV</div>
               <div style="font-size: 0.78rem; color: var(--muted-foreground);">Assista os jogos ao vivo no YouTube</div>
@@ -2399,8 +2445,12 @@
           </div>
           <a href="https://www.youtube.com/@CazeTV" target="_blank" rel="noopener noreferrer"
             style="display:inline-flex;align-items:center;gap:6px;background:var(--primary);color:#fff;border:none;border-radius:6px;padding:9px 18px;font-size:0.85rem;font-weight:600;font-family:inherit;text-decoration:none;transition:background 0.2s ease;white-space:nowrap;"
-            onmouseover="this.style.background='var(--primary-hover)'" onmouseout="this.style.background='var(--primary)'">
-            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:#fff;"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+            onmouseover="this.style.background='var(--primary-hover)'"
+            onmouseout="this.style.background='var(--primary)'">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:#fff;">
+              <path
+                d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+            </svg>
             Assistir ao Vivo
           </a>
         </div>
@@ -2418,6 +2468,26 @@
           <option value="Todos">Todos</option>
         </select>
       </div>
+
+      <!-- Referral Card (Jogos) -->
+      <div class="card participant-referral-card"
+        style="display: none; margin-bottom: 24px; background: rgba(201, 168, 76, 0.03); border-color: rgba(201, 168, 76, 0.15); padding: 12px 16px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; width: 100%;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="gift" style="width: 16px; height: 16px; color: var(--gold);"></i>
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--gold);">Indique amigos e ganhe bônus:</span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center; flex: 1; min-width: 220px; max-width: 400px;">
+            <input class="inp share-ref-link-input" id="share-ref-link-jogos" readonly
+              style="flex: 1; font-size: 0.75rem; padding: 5px 10px; background: #09090b; height: 30px;" onclick="this.select()">
+            <button class="btn-add" onclick="copyReferralLink('share-ref-link-jogos')"
+              style="padding: 0 12px; background: var(--gold); border-color: var(--gold); color: #000; font-size: 0.75rem; font-weight: 600; display:flex; align-items:center; gap:4px; justify-content:center; height: 30px; margin: 0; min-width: 80px;">
+              <i data-lucide="copy" style="width: 12px; height: 12px;"></i> Copiar
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div class="mlist" id="jogos-list">
         <div class="mc">
           <div class="mc-head" style="background: rgba(24,24,27,0.5);">
@@ -2508,37 +2578,21 @@
           <option value="Todos">Todos</option>
         </select>
       </div>
-      
-      <!-- Referral Card on page-apostas -->
-      <div class="card" id="participant-referral-card" style="margin-bottom: 20px; background: rgba(201, 168, 76, 0.02); border-color: rgba(201, 168, 76, 0.2);">
-        <div style="display: flex; flex-direction: column; gap: 16px;">
-          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.03); padding-bottom: 12px;">
-            <div>
-              <div style="font-family: 'Oswald', sans-serif; font-size: 1.1rem; color: var(--gold); display: flex; align-items: center; gap: 6px;">
-                <i data-lucide="gift" style="width: 18px; height: 18px;"></i> Indique e Ganhe!
-              </div>
-              <div style="font-size: 0.8rem; color: var(--muted-foreground); margin-top: 2px;">
-                Copie seu link de indicação e envie para seus amigos. Você ganha bônus por cada indicação ativa!
-              </div>
-            </div>
-            <div style="display: flex; gap: 8px; align-items: center; width: 100%; max-width: 480px;">
-              <input class="inp" id="share-ref-link-apostas" readonly style="flex: 1; font-size: 0.8rem; padding: 8px 12px; background: #09090b;" onclick="this.select()">
-              <button class="btn-add" onclick="copyReferralLink('share-ref-link-apostas')" style="padding: 8px 16px; background: var(--gold); border-color: var(--gold); color: #000; font-weight: 600; display:flex; align-items:center; gap:4px; justify-content:center;">
-                <i data-lucide="copy" style="width: 14px; height: 14px;"></i> Copiar
-              </button>
-            </div>
+
+      <!-- Referral Card (Apostas) -->
+      <div class="card participant-referral-card"
+        style="display: none; margin-bottom: 24px; background: rgba(201, 168, 76, 0.03); border-color: rgba(201, 168, 76, 0.15); padding: 12px 16px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; width: 100%;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="gift" style="width: 16px; height: 16px; color: var(--gold);"></i>
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--gold);">Indique amigos e ganhe bônus:</span>
           </div>
-          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
-            <div>
-              <div style="font-family: 'Oswald', sans-serif; font-size: 1.1rem; color: #60a5fa; display: flex; align-items: center; gap: 6px;">
-                <i data-lucide="bell" style="width: 18px; height: 18px;"></i> Notificações do Bolão
-              </div>
-              <div style="font-size: 0.8rem; color: var(--muted-foreground); margin-top: 2px;">
-                Fique sabendo imediatamente quando saírem novos jogos, resultados e avisos importantes neste dispositivo!
-              </div>
-            </div>
-            <button class="btn-add" id="btn-push-subscribe" onclick="togglePushSubscription()" style="padding: 8px 16px; background: #2563eb; border-color: #2563eb; color: #fff; font-weight: 600; display:flex; align-items:center; gap:6px; justify-content:center; min-width: 180px;">
-              <i data-lucide="bell"></i> Receber Alertas
+          <div style="display: flex; gap: 8px; align-items: center; flex: 1; min-width: 220px; max-width: 400px;">
+            <input class="inp share-ref-link-input" id="share-ref-link-apostas" readonly
+              style="flex: 1; font-size: 0.75rem; padding: 5px 10px; background: #09090b; height: 30px;" onclick="this.select()">
+            <button class="btn-add" onclick="copyReferralLink('share-ref-link-apostas')"
+              style="padding: 0 12px; background: var(--gold); border-color: var(--gold); color: #000; font-size: 0.75rem; font-weight: 600; display:flex; align-items:center; gap:4px; justify-content:center; height: 30px; margin: 0; min-width: 80px;">
+              <i data-lucide="copy" style="width: 12px; height: 12px;"></i> Copiar
             </button>
           </div>
         </div>
@@ -2629,12 +2683,17 @@
       <div class="ptitle"><i data-lucide="settings"
           style="width: 20px; height: 20px; margin-right: 10px; display: inline-block; vertical-align: -3px; color: var(--primary)"></i>Administração
       </div>
-      
+
       <!-- CARD DE SOLICITAÇÕES PENDENTES -->
-      <div class="card" id="admin-pending-card" style="display:none; border-color:var(--primary); background:rgba(230,57,70,0.02); margin-bottom: 24px;">
-        <div class="sub-title" style="color:var(--primary-hover); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(230,57,70,0.15); padding-bottom:8px; margin-bottom:14px;">
-          <span style="display:flex; align-items:center; gap:6px;"><i data-lucide="clock" style="width:14px;height:14px;"></i> Solicitações Pendentes (Aprovação de Pix)</span>
-          <span class="badge-admin" style="background:rgba(230,57,70,0.1); color:var(--primary-hover); border-color:rgba(230,57,70,0.2);" id="admin-pending-count">0 pendentes</span>
+      <div class="card" id="admin-pending-card"
+        style="display:none; border-color:var(--primary); background:rgba(230,57,70,0.02); margin-bottom: 24px;">
+        <div class="sub-title"
+          style="color:var(--primary-hover); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(230,57,70,0.15); padding-bottom:8px; margin-bottom:14px;">
+          <span style="display:flex; align-items:center; gap:6px;"><i data-lucide="clock"
+              style="width:14px;height:14px;"></i> Solicitações Pendentes (Aprovação de Pix)</span>
+          <span class="badge-admin"
+            style="background:rgba(230,57,70,0.1); color:var(--primary-hover); border-color:rgba(230,57,70,0.2);"
+            id="admin-pending-count">0 pendentes</span>
         </div>
         <div id="admin-pending-list" style="display:flex; flex-direction:column; gap:8px;">
           <!-- Pendings rendered here -->
@@ -2686,13 +2745,18 @@
           <i data-lucide="send" style="width:14px; height:14px;"></i> Enviar Notificação Push
         </div>
         <div style="font-size: 0.8rem; color: var(--muted-foreground); margin-bottom: 14px;">
-          Envie alertas instantâneos diretamente para as telas de todos os participantes cadastrados e inscritos no sistema.
+          Envie alertas instantâneos diretamente para as telas de todos os participantes cadastrados e inscritos no
+          sistema.
         </div>
         <div class="form-row" style="flex-direction: column; align-items: stretch; gap: 10px;">
           <input class="inp" id="push-title" placeholder="Título (Ex: Novo Resultado Disponível!)" style="width:100%">
-          <textarea class="inp" id="push-body" placeholder="Mensagem da notificação (Ex: Confira o placar do jogo do Brasil no ranking.)" style="width:100%; height:64px; resize:none; font-family:inherit;"></textarea>
-          <input class="inp" id="push-url" placeholder="Link para abrir ao clicar (opcional - Ex: /#jogos)" style="width:100%">
-          <button class="btn-add" id="btn-send-push" onclick="sendPushNotification()" style="background:#2563eb; border-color:#3b82f6; color:#fff; align-self: flex-start; display:flex; align-items:center; gap:6px; margin:0;">
+          <textarea class="inp" id="push-body"
+            placeholder="Mensagem da notificação (Ex: Confira o placar do jogo do Brasil no ranking.)"
+            style="width:100%; height:64px; resize:none; font-family:inherit;"></textarea>
+          <input class="inp" id="push-url" placeholder="Link para abrir ao clicar (opcional - Ex: /#jogos)"
+            style="width:100%">
+          <button class="btn-add" id="btn-send-push" onclick="sendPushNotification()"
+            style="background:#2563eb; border-color:#3b82f6; color:#fff; align-self: flex-start; display:flex; align-items:center; gap:6px; margin:0;">
             <i data-lucide="bell-ring"></i> Enviar para Todos
           </button>
         </div>
@@ -2737,7 +2801,8 @@
             Finalizar Copa e Exibir Pódio
           </button>
         </div>
-        <div id="admin-cup-final-match-info" style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 0.85rem; display: flex; flex-direction: column; gap: 8px;">
+        <div id="admin-cup-final-match-info"
+          style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 0.85rem; display: flex; flex-direction: column; gap: 8px;">
           <!-- Carregado dinamicamente -->
         </div>
       </div>
@@ -2852,20 +2917,25 @@
       </div>
       <div class="mfield">
         <label>Quem indicou</label>
-        <select id="edit-p-referred-by" style="width:100%;background:#09090b;border:1px solid var(--border);border-radius:6px;color:var(--foreground);padding:10px 14px;font-size:0.9rem;outline:none;font-family:inherit;transition:all 0.2s ease;">
+        <select id="edit-p-referred-by"
+          style="width:100%;background:#09090b;border:1px solid var(--border);border-radius:6px;color:var(--foreground);padding:10px 14px;font-size:0.9rem;outline:none;font-family:inherit;transition:all 0.2s ease;">
         </select>
       </div>
       <div class="mfield" style="margin-top:20px;">
         <label style="display:flex; justify-content:space-between; align-items:center;">
           <span>Participantes que indicou</span>
-          <span id="edit-p-referred-count" style="color:var(--gold); font-weight:bold; font-size:0.75rem;">0 pontos</span>
+          <span id="edit-p-referred-count" style="color:var(--gold); font-weight:bold; font-size:0.75rem;">0
+            pontos</span>
         </label>
-        <div id="edit-p-referred-list" style="max-height:120px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; background:#09090b; padding:6px; margin-bottom:8px; display:flex; flex-direction:column; gap:4px;">
+        <div id="edit-p-referred-list"
+          style="max-height:120px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; background:#09090b; padding:6px; margin-bottom:8px; display:flex; flex-direction:column; gap:4px;">
         </div>
         <div style="display:flex; gap:8px;">
-          <select id="edit-p-add-referred-sel" style="flex:1; background:#09090b; border:1px solid var(--border); border-radius:6px; color:var(--foreground); padding:6px 10px; font-size:0.85rem; outline:none;">
+          <select id="edit-p-add-referred-sel"
+            style="flex:1; background:#09090b; border:1px solid var(--border); border-radius:6px; color:var(--foreground); padding:6px 10px; font-size:0.85rem; outline:none;">
           </select>
-          <button type="button" class="btn-add" style="padding:6px 12px; font-size:0.8rem; height:auto; margin:0;" onclick="addReferredParticipant()">Adicionar</button>
+          <button type="button" class="btn-add" style="padding:6px 12px; font-size:0.8rem; height:auto; margin:0;"
+            onclick="addReferredParticipant()">Adicionar</button>
         </div>
       </div>
       <div id="edit-p-err" style="color:#ef4444;font-size:0.82rem;margin-bottom:8px;min-height:18px;"></div>
@@ -2952,7 +3022,9 @@
           <div class="pod-avatar" id="pod-avatar-2">2º</div>
           <div class="pod-name" id="pod-name-2">Maria</div>
           <div class="pod-pts" id="pod-pts-2">45 pts</div>
-          <div class="pod-prize" id="pod-prize-2" style="font-size: 0.95rem; color: #10b981; font-weight: 700; margin-bottom: 8px; font-family: Oswald, sans-serif;">R$ 0,00</div>
+          <div class="pod-prize" id="pod-prize-2"
+            style="font-size: 0.95rem; color: #10b981; font-weight: 700; margin-bottom: 8px; font-family: Oswald, sans-serif;">
+            R$ 0,00</div>
           <div class="pod-bar silver">
             <div class="pod-rank-num">2</div>
           </div>
@@ -2964,7 +3036,9 @@
           <div class="pod-avatar" id="pod-avatar-1">1º</div>
           <div class="pod-name" id="pod-name-1">João</div>
           <div class="pod-pts" id="pod-pts-1">52 pts</div>
-          <div class="pod-prize" id="pod-prize-1" style="font-size: 1.15rem; color: #10b981; font-weight: 700; margin-bottom: 8px; font-family: Oswald, sans-serif;">R$ 0,00</div>
+          <div class="pod-prize" id="pod-prize-1"
+            style="font-size: 1.15rem; color: #10b981; font-weight: 700; margin-bottom: 8px; font-family: Oswald, sans-serif;">
+            R$ 0,00</div>
           <div class="pod-bar gold">
             <i data-lucide="trophy" style="width: 28px; height: 28px; color: #fff; margin-bottom: 8px"></i>
             <div class="pod-rank-num">1</div>
@@ -2976,7 +3050,9 @@
           <div class="pod-avatar" id="pod-avatar-3">3º</div>
           <div class="pod-name" id="pod-name-3">Pedro</div>
           <div class="pod-pts" id="pod-pts-3">40 pts</div>
-          <div class="pod-prize" id="pod-prize-3" style="font-size: 0.95rem; color: #10b981; font-weight: 700; margin-bottom: 8px; font-family: Oswald, sans-serif;">R$ 0,00</div>
+          <div class="pod-prize" id="pod-prize-3"
+            style="font-size: 0.95rem; color: #10b981; font-weight: 700; margin-bottom: 8px; font-family: Oswald, sans-serif;">
+            R$ 0,00</div>
           <div class="pod-bar bronze">
             <div class="pod-rank-num">3</div>
           </div>
@@ -2990,22 +3066,32 @@
     <div class="modal" style="max-width:400px;">
       <h2>Minhas Indicações</h2>
       <div class="modal-sub" style="margin-bottom:12px;">Veja quem você indicou e quanto acumulou em bônus.</div>
-      <div id="my-ref-rank" style="font-size:0.85rem; color:var(--gold); margin-bottom:16px; font-weight:600; text-align:center; background:rgba(201,168,76,0.08); border:1px solid rgba(201,168,76,0.2); border-radius:6px; padding:6px 12px;"></div>
-      
-      <div style="background:#18181b; border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:16px;">
-        <label style="display:block; font-size:0.7rem; color:var(--muted-foreground); margin-bottom:6px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Seu Link de Indicação:</label>
+      <div id="my-ref-rank"
+        style="font-size:0.85rem; color:var(--gold); margin-bottom:16px; font-weight:600; text-align:center; background:rgba(201,168,76,0.08); border:1px solid rgba(201,168,76,0.2); border-radius:6px; padding:6px 12px;">
+      </div>
+
+      <div
+        style="background:#18181b; border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:16px;">
+        <label
+          style="display:block; font-size:0.7rem; color:var(--muted-foreground); margin-bottom:6px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Seu
+          Link de Indicação:</label>
         <div style="display:flex; gap:8px;">
-          <input class="inp" id="share-ref-link-modal" readonly style="flex:1; font-size:0.75rem; padding:6px 10px; background:#09090b; height:32px;" onclick="this.select()">
-          <button class="mbtn primary" onclick="copyReferralLink('share-ref-link-modal')" style="flex:none; width:auto; padding:0 12px; height:32px; font-size:0.75rem; margin:0; display:flex; align-items:center; gap:4px; justify-content:center;">
+          <input class="inp" id="share-ref-link-modal" readonly
+            style="flex:1; font-size:0.75rem; padding:6px 10px; background:#09090b; height:32px;"
+            onclick="this.select()">
+          <button class="mbtn primary" onclick="copyReferralLink('share-ref-link-modal')"
+            style="flex:none; width:auto; padding:0 12px; height:32px; font-size:0.75rem; margin:0; display:flex; align-items:center; gap:4px; justify-content:center;">
             <i data-lucide="copy" style="width:12px;height:12px;"></i> Copiar
           </button>
         </div>
       </div>
-      
-      <div style="background:#18181b; border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:20px; display:flex; flex-direction:column; gap:12px;">
+
+      <div
+        style="background:#18181b; border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:20px; display:flex; flex-direction:column; gap:12px;">
         <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.9rem;">
           <span style="color:var(--muted-foreground);">Suas indicações:</span>
-          <strong id="my-ref-points" style="color:var(--primary); font-size:1.1rem; font-family:Oswald;">0 pontos</strong>
+          <strong id="my-ref-points" style="color:var(--primary); font-size:1.1rem; font-family:Oswald;">0
+            pontos</strong>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.9rem;">
           <span style="color:var(--muted-foreground);">Fundo Total (2%):</span>
@@ -3015,23 +3101,25 @@
           <span style="color:var(--muted-foreground);">Valor por ponto:</span>
           <strong id="my-ref-point-value" style="color:var(--foreground);">R$ 0,00</strong>
         </div>
-        <div style="border-top:1px solid var(--border); margin-top:4px; padding-top:12px; display:flex; justify-content:space-between; align-items:center; font-size:1rem;">
+        <div
+          style="border-top:1px solid var(--border); margin-top:4px; padding-top:12px; display:flex; justify-content:space-between; align-items:center; font-size:1rem;">
           <span style="font-weight:600; color:var(--gold);">Estimativa Atual:</span>
           <strong id="my-ref-bonus" style="color:var(--gold); font-size:1.25rem; font-family:Oswald;">R$ 0,00</strong>
         </div>
-        <div style="font-size:0.7rem; color:var(--muted-foreground); text-align:right; margin-top:-8px;">* O valor pode variar para mais ou para menos.</div>
+        <div style="font-size:0.7rem; color:var(--muted-foreground); text-align:right; margin-top:-8px;">* O valor pode
+          variar para mais ou para menos.</div>
       </div>
-      
+
       <div class="sub-title">Pessoas que você indicou:</div>
-      <div id="my-referrals-list" style="max-height:150px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; background:#09090b; padding:8px; margin-bottom:20px; display:flex; flex-direction:column; gap:6px;">
+      <div id="my-referrals-list"
+        style="max-height:150px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; background:#09090b; padding:8px; margin-bottom:20px; display:flex; flex-direction:column; gap:6px;">
       </div>
-      
+
       <div class="mbtns">
         <button class="mbtn secondary" onclick="closeMyReferralsModal()" style="width:100%;">Fechar</button>
       </div>
     </div>
   </div>
-
   <!-- REFERRAL SIGNUP MODAL -->
   <div class="overlay hide" id="referral-signup-overlay">
     <div class="modal" style="max-width:400px;">
@@ -3039,15 +3127,16 @@
         <i data-lucide="user-plus" style="width:20px; height:20px; color:var(--primary)"></i> Solicitar Participação
       </h2>
       <div class="modal-sub" id="ref-signup-subtitle">Você foi indicado para participar do Bolão!</div>
-      
-        <div id="ref-signup-form-body">
-          <div class="mfield">
-            <label>Nome de Usuário</label>
-            <input class="inp" id="ref-signup-name" placeholder="Ex: xico123" style="width:100%">
-          </div>
+
+      <div id="ref-signup-form-body">
+        <div class="mfield">
+          <label>Nome de Usuário</label>
+          <input class="inp" id="ref-signup-name" placeholder="Ex: xico123" style="width:100%">
+        </div>
         <div class="mfield">
           <label>WhatsApp (Telefone)</label>
-          <input class="inp" id="ref-signup-phone" placeholder="(00) 00000-0000" style="width:100%" maxlength="15" inputmode="tel" oninput="applyPhoneMask(this)">
+          <input class="inp" id="ref-signup-phone" placeholder="(00) 00000-0000" style="width:100%" maxlength="15"
+            inputmode="tel" oninput="applyPhoneMask(this)">
         </div>
         <div class="mfield">
           <label>Criar PIN (4 dígitos numéricos)</label>
@@ -3059,40 +3148,58 @@
           </div>
           <div style="font-size:0.7rem; color:var(--muted-foreground); text-align:center; margin-top:-6px;">Esse PIN será usado para você fazer login no sistema futuramente.</div>
         </div>
-        
+        <div class="mfield">
+          <label>Quantidade de Cotas</label>
+          <div style="font-size:0.72rem; color:var(--muted-foreground); margin-bottom:6px;">Cada cota custa <strong>R$ 25,00</strong>. Você pode adquirir mais de uma cota para multiplicar suas chances (ex: 2 cotas = R$ 50,00).</div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input class="inp" type="number" id="ref-signup-cotas" value="1" min="1" max="100" style="width:80px; text-align:center;" oninput="updateRefSignupTotal()">
+            <span style="font-size:0.9rem; color:var(--muted-foreground);">Total a pagar: <strong id="ref-signup-total-val" style="color:var(--gold)">R$ 25,00</strong></span>
+          </div>
+        </div>
         <div class="merr" id="ref-signup-err"></div>
-        
         <div class="mbtns" style="margin-top:16px;">
           <button class="mbtn secondary" onclick="closeReferralSignup()">Cancelar</button>
           <button class="mbtn primary" id="btn-submit-ref-signup" onclick="submitReferralSignup()">Enviar Solicitação</button>
         </div>
       </div>
-      
-      <!-- Referral Success / PIX screen -->
+
       <div id="ref-signup-success-body" style="display:none; text-align:center;">
         <div style="font-size:3rem; margin-bottom:12px;">🎉</div>
-        <div style="font-family:'Oswald', sans-serif; font-size:1.2rem; color:#10b981; margin-bottom:8px;">Solicitação Enviada!</div>
+        <div style="font-family:'Oswald', sans-serif; font-size:1.2rem; color:#10b981; margin-bottom:8px;">Solicitação
+          Enviada!</div>
         <div style="font-size:0.85rem; color:var(--muted-foreground); margin-bottom:20px; line-height:1.4;">
-          Sua solicitação sob o nome <strong id="ref-success-name" style="color:var(--foreground)"></strong> foi enviada ao administrador do bolão e está pendente de aprovação.
+          Sua solicitação sob o nome <strong id="ref-success-name" style="color:var(--foreground)"></strong> foi enviada
+          ao administrador do bolão e está pendente de aprovação.
         </div>
-        
-        <div style="background:#09090b; border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:20px; text-align:left;">
-          <div style="font-size:0.8rem; font-weight:600; color:var(--gold); text-transform:uppercase; margin-bottom:8px; letter-spacing:0.5px; display:flex; align-items:center; gap:4px;">
+
+        <div
+          style="background:#09090b; border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:20px; text-align:left;">
+          <div
+            style="font-size:0.8rem; font-weight:600; color:var(--gold); text-transform:uppercase; margin-bottom:8px; letter-spacing:0.5px; display:flex; align-items:center; gap:4px;">
             <i data-lucide="qr-code" style="width:14px;height:14px;"></i> Instruções de Pagamento (PIX)
           </div>
           <div style="font-size:0.85rem; line-height:1.4; color:var(--foreground);">
-            Para ativar seu acesso, faça o PIX do valor da cota:
+            Para ativar seu acesso, faça o PIX do valor total correspondente:
             <ul style="margin: 8px 0 8px 16px; padding:0; display:flex; flex-direction:column; gap:4px;">
-              <li>Valor: <strong style="color:var(--gold)">R$ 25,00</strong></li>
-              <li>Chave PIX: <strong style="color:var(--gold)">85998091910</strong> (Celular)</li>
-              <li>Beneficiário: <strong style="color:var(--gold)">UNK / Admin</strong></li>
+              <li>Valor Total (<span id="ref-success-cotas">1 cota</span>): <strong style="color:var(--gold)" id="ref-success-total">R$ 25,00</strong></li>
+              <li style="display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
+                <span>Chave PIX: <strong style="color:var(--gold)" id="pix-key-val">85998091910</strong>
+                  (Celular)</span>
+                <button class="btn-sm" onclick="copyPixKey()"
+                  style="padding: 2px 6px; font-size: 0.7rem; display: inline-flex; align-items: center; gap: 3px; border-color: rgba(201, 168, 76, 0.4); color: var(--gold); background: rgba(201, 168, 76, 0.05); cursor:pointer; height:20px; margin:0;">
+                  <i data-lucide="copy" style="width: 10px; height: 10px;"></i> Copiar
+                </button>
+              </li>
+              <li>Beneficiário: <strong style="color:var(--gold)">Francisco Ewerton (Picpay)</strong></li>
             </ul>
-            Após pagar, clique no botão abaixo para enviar o comprovante via WhatsApp diretamente ao administrador para aprovação imediata.
+            Após pagar, clique no botão abaixo para enviar o comprovante via WhatsApp diretamente ao administrador para
+            aprovação imediata.
           </div>
         </div>
-        
+
         <div style="display:flex; flex-direction:column; gap:8px;">
-          <a id="ref-whatsapp-btn" href="#" target="_blank" rel="noopener noreferrer" class="mbtn primary" style="background:#25d366; color:#fff; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:6px;">
+          <a id="ref-whatsapp-btn" href="#" target="_blank" rel="noopener noreferrer" class="mbtn primary"
+            style="background:#25d366; color:#fff; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:6px;">
             <i data-lucide="message-circle" style="width:16px;height:16px;"></i> Enviar Comprovante no WhatsApp
           </a>
           <button class="mbtn secondary" onclick="closeReferralSignup()">Fechar</button>
@@ -3102,6 +3209,17 @@
   </div>
 
   <script>
+    // Unregister service worker on localhost to prevent caching issues during development
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (registrations) {
+          for (var idx = 0; idx < registrations.length; idx++) {
+            registrations[idx].unregister();
+          }
+        });
+      }
+    }
+
     // ─── State ────────────────────────────────────────────────────────────────────
     var session = null;
     var allMatches = [], allBets = [], allParticipants = [];
@@ -3142,7 +3260,7 @@
       var isValid = el1.value.trim() !== '' && el2.value.trim() !== '';
 
       if (prefix === 'r' && isValid) {
-        var m = allMatches.find(function(x) { return String(x.id) === String(matchId); });
+        var m = allMatches.find(function (x) { return String(x.id) === String(matchId); });
         if (m && m.round && !m.round.startsWith("Matchday")) {
           var penDiv = document.getElementById('penalties-section-' + matchId);
           var isTie = parseInt(el1.value) === parseInt(el2.value);
@@ -3345,6 +3463,8 @@
       var btnL = document.getElementById('btn-login');
       var navA = document.getElementById('nav-apostas');
       var navAd = document.getElementById('nav-admin');
+      var refCards = document.querySelectorAll('.participant-referral-card');
+
       if (session) {
         info.style.display = 'flex';
         btnL.style.display = 'none';
@@ -3353,11 +3473,34 @@
           : 'Olá, <strong style="cursor:pointer; text-decoration:underline; transition:color 0.2s;" onmouseover="this.style.color=\'var(--primary-hover)\'" onmouseout="this.style.color=\'var(--foreground)\'" onclick="openMyReferralsModal()">' + session.name + '</strong>';
         navA.style.display = session.type === 'participant' ? '' : 'none';
         navAd.style.display = session.type === 'admin' ? '' : 'none';
+
+        var btnHeader = document.getElementById('btn-push-subscribe-header');
+        if (btnHeader) {
+          btnHeader.style.display = session.type === 'participant' ? 'flex' : 'none';
+          if (session.type === 'participant') {
+            updatePushSubscriptionButton();
+          }
+        }
+
+        if (session.type === 'participant') {
+          refCards.forEach(function (card) { card.style.display = 'block'; });
+          var refInputs = document.querySelectorAll('.share-ref-link-input');
+          refInputs.forEach(function (input) {
+            input.value = window.location.origin + '?ref=' + session.id;
+          });
+        } else {
+          refCards.forEach(function (card) { card.style.display = 'none'; });
+        }
       } else {
         info.style.display = 'none';
         btnL.style.display = '';
         navA.style.display = 'none';
         navAd.style.display = 'none';
+
+        var btnHeader = document.getElementById('btn-push-subscribe-header');
+        if (btnHeader) btnHeader.style.display = 'none';
+
+        refCards.forEach(function (card) { card.style.display = 'none'; });
       }
       lucide.createIcons();
     }
@@ -3380,7 +3523,7 @@
         sel.innerHTML = list.length
           ? list.map(function (p) { return '<option value="' + p.id + '">' + p.name + '</option>'; }).join('')
           : '<option value="">Nenhum participante cadastrado</option>';
-        sel.onchange = function() { updateLockoutUI(); };
+        sel.onchange = function () { updateLockoutUI(); };
         clearPin();
         document.getElementById('merr').textContent = '';
         document.getElementById('attempts-warn').classList.remove('visible');
@@ -3410,7 +3553,7 @@
       clearPin();
       document.getElementById('merr').textContent = '';
       // Re-check lockout for new context
-      setTimeout(function() {
+      setTimeout(function () {
         if (typeof updateLockoutUI === 'function') {
           updateLockoutUI();
           var state = getLockoutState(getLockoutKey());
@@ -3850,7 +3993,7 @@
         lucide.createIcons();
       }
 
-      var m = allMatches.find(function(x) { return String(x.id) === String(id); });
+      var m = allMatches.find(function (x) { return String(x.id) === String(id); });
       var penalties_winner = null;
       if (m && m.round && !m.round.startsWith("Matchday") && parseInt(s1) === parseInt(s2)) {
         var btn1 = document.getElementById('pen-btn-1-' + id);
@@ -3929,12 +4072,17 @@
         apostasFilter = 'Todos';
         renderApostasFilters();
         renderApostas();
-        var shareApostas = document.getElementById('share-ref-link-apostas');
-        if (shareApostas) {
-          shareApostas.value = window.location.origin + '?ref=' + session.id;
+        var refInputs = document.querySelectorAll('.share-ref-link-input');
+        if (refInputs.length && session) {
+          refInputs.forEach(function (input) {
+            input.value = window.location.origin + '?ref=' + session.id;
+          });
         }
         if (typeof initPushNotifications === 'function') {
           initPushNotifications();
+        }
+        if (typeof initPwaInstallHelper === 'function') {
+          initPwaInstallHelper();
         }
       });
     }
@@ -4114,7 +4262,7 @@
         var isToday = matchDate(m) === todayStr;
         var hasResult = m.result && m.result.score1 !== null && m.result.score2 !== null;
         var isLive = m.locked && !hasResult;
-        
+
         var isPast = m.locked && !isToday && !isLive;
         var opacityStyle = isPast ? ' style="opacity:.65; display:flex; flex-direction:column; align-items:stretch;"' : ' style="display:flex; flex-direction:column; align-items:stretch;"';
         var classStr = 'arow' + ((isToday || isLive) ? ' today' : '');
@@ -4193,10 +4341,10 @@
       Promise.all([
         apiFetch('GET', '/api/participants'),
         apiFetch('GET', '/api/participants/pending', null, { 'x-admin-pin': session.pin })
-      ]).then(function(results) {
+      ]).then(function (results) {
         allParticipants = Array.isArray(results[0]) ? results[0] : [];
         renderParticipantsList();
-        
+
         var pendingList = Array.isArray(results[1]) ? results[1] : [];
         renderPendingList(pendingList);
       });
@@ -4261,13 +4409,13 @@
           var hasRes = finalMatch.result && finalMatch.result.score1 !== null && finalMatch.result.score2 !== null;
           var t1 = finalMatch.team1;
           var t2 = finalMatch.team2;
-          
+
           if (hasRes) {
             var s1 = finalMatch.result.score1;
             var s2 = finalMatch.result.score2;
             var winner = null;
             var viaPenalties = false;
-            
+
             if (s1 > s2) {
               winner = t1;
             } else if (s2 > s1) {
@@ -4276,14 +4424,14 @@
               winner = finalMatch.result.penalties_winner;
               viaPenalties = true;
             }
-            
+
             var winnerHtml = '';
             if (winner) {
               winnerHtml = '<span class="tflag" style="margin-right:4px">' + fl(winner) + '</span><strong>' + tn(winner) + '</strong>' + (viaPenalties ? ' <span style="color:var(--gold);font-size:0.75rem;">(Pênaltis)</span>' : '');
             } else {
               winnerHtml = '<span style="color:#ef4444;font-weight:600;">Indefinido (Final empatada, selecione o vencedor nos pênaltis na lista de jogos)</span>';
             }
-            
+
             finalMatchHtml = '<div><strong>Jogo da Final:</strong> <span class="tflag">' + fl(t1) + '</span> ' + tn(t1) + ' <strong style="color:var(--gold);font-family:Oswald">' + s1 + '</strong> : <strong style="color:var(--gold);font-family:Oswald">' + s2 + '</strong> ' + tn(t2) + ' <span class="tflag">' + fl(t2) + '</span></div>'
               + '<div><strong>Campeão da Copa:</strong> ' + winnerHtml + '</div>';
           } else {
@@ -4403,11 +4551,11 @@
       document.getElementById('edit-p-cotas').value = cotas !== undefined ? cotas : 1;
       document.getElementById('edit-p-err').textContent = '';
       document.getElementById('edit-p-subtitle').textContent = 'Editando: ' + name;
-      
+
       // Select referrer:
       var p = allParticipants.find(function (x) { return x.id === id; });
       var referrerId = p ? p.referred_by : '';
-      
+
       // Populate referrer dropdown
       var refSel = document.getElementById('edit-p-referred-by');
       if (refSel) {
@@ -4418,7 +4566,7 @@
             return '<option value="' + x.id + '"' + (x.id === referrerId ? ' selected' : '') + '>' + x.name + '</option>';
           }).join('');
       }
-      
+
       // Refresh the referred list
       refreshEditReferredList(id);
 
@@ -5014,16 +5162,16 @@
       try {
         var raw = localStorage.getItem(key);
         if (raw) return JSON.parse(raw);
-      } catch (e) {}
+      } catch (e) { }
       return { attempts: 0, lockedUntil: 0 };
     }
 
     function saveLockoutState(key, state) {
-      try { localStorage.setItem(key, JSON.stringify(state)); } catch (e) {}
+      try { localStorage.setItem(key, JSON.stringify(state)); } catch (e) { }
     }
 
     function clearLockoutState(key) {
-      try { localStorage.removeItem(key); } catch (e) {}
+      try { localStorage.removeItem(key); } catch (e) { }
     }
 
     // Calculate lockout duration in ms for a given attempt count (>= 3)
@@ -5055,21 +5203,21 @@
       var timerEl = document.getElementById('lockout-timer');
       var warnEl = document.getElementById('attempts-warn');
       var btnE = document.getElementById('btn-entrar');
-      var pinEls = [0,1,2,3].map(function(i){ return document.getElementById('p'+i); });
+      var pinEls = [0, 1, 2, 3].map(function (i) { return document.getElementById('p' + i); });
 
       if (state.lockedUntil && now < state.lockedUntil) {
         // Show locked state
         banner.classList.add('visible');
         warnEl.classList.remove('visible');
         if (btnE) { btnE.disabled = true; btnE.style.opacity = '0.4'; }
-        pinEls.forEach(function(el){ if(el) el.classList.add('locked'); });
+        pinEls.forEach(function (el) { if (el) el.classList.add('locked'); });
         var remaining = state.lockedUntil - now;
         if (timerEl) timerEl.textContent = formatCountdown(remaining);
       } else {
         // Not locked
         banner.classList.remove('visible');
         if (btnE) { btnE.disabled = false; btnE.style.opacity = ''; }
-        pinEls.forEach(function(el){ if(el) el.classList.remove('locked'); });
+        pinEls.forEach(function (el) { if (el) el.classList.remove('locked'); });
 
         // Show attempts warning if >= 1 error
         if (state.attempts > 0 && state.attempts < 3) {
@@ -5087,7 +5235,7 @@
 
     function startLockoutCountdown() {
       if (_lockoutInterval) clearInterval(_lockoutInterval);
-      _lockoutInterval = setInterval(function() {
+      _lockoutInterval = setInterval(function () {
         var key = getLockoutKey();
         var state = getLockoutState(key);
         var now = Date.now();
@@ -5099,7 +5247,7 @@
           updateLockoutUI();
           document.getElementById('merr').textContent = '';
           clearPin();
-          setTimeout(function() { document.getElementById('p0').focus(); }, 50);
+          setTimeout(function () { document.getElementById('p0').focus(); }, 50);
           return;
         }
         var timerEl = document.getElementById('lockout-timer');
@@ -5227,7 +5375,7 @@
       if (cupFinishedObj.value === 'true') {
         var btnShowPod = document.getElementById('btn-show-podium');
         if (btnShowPod) btnShowPod.style.display = 'inline-flex';
-        
+
         if (sessionStorage.getItem('podium_shown') !== 'true') {
           var finalMatch = allMatches.find(function (m) { return String(m.id) === '104' || m.round === 'Final'; });
           var winnerTeam = null;
@@ -5263,11 +5411,11 @@
       var el = document.getElementById('participants-list');
       if (!el) return;
       if (!allParticipants.length) { el.innerHTML = '<div class="empty" style="grid-column:1/-1">Nenhum participante.</div>'; return; }
-      
+
       // Calculate point value:
       var totalReferrals = allParticipants.filter(function (p) { return p.referred_by; }).length;
       var valuePerPoint = totalReferrals > 0 ? ((currentArrecadado * 0.02) / totalReferrals) : 0;
-      
+
       el.innerHTML = allParticipants.map(function (p) {
         var waBtn = '';
         if (p.phone) {
@@ -5277,7 +5425,7 @@
         }
         var cotasCount = p.cotas !== undefined ? p.cotas : 1;
         var cotasText = '<div style="font-size:0.7rem;color:var(--gold);margin-top:2px;font-weight:600;">' + cotasCount + (cotasCount === 1 ? ' Cota' : ' Cotas') + '</div>';
-        
+
         var referredByText = '';
         if (p.referred_by) {
           var referrer = allParticipants.find(function (x) { return x.id === p.referred_by; });
@@ -5285,14 +5433,14 @@
             referredByText = '<div style="font-size:0.7rem;color:var(--muted-foreground);margin-top:1px;">Indicado por: <strong>' + referrer.name + '</strong></div>';
           }
         }
-        
+
         var refPoints = allParticipants.filter(function (x) { return x.referred_by === p.id; }).length;
         var refMoney = refPoints * valuePerPoint;
         var referralsText = '';
         if (refPoints > 0) {
           referralsText = '<div style="font-size:0.7rem;color:var(--primary-hover);margin-top:1px;font-weight:600;" title="Estimativa atual: ' + refMoney.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) + ' (valor pode variar)">Indicações: ' + refPoints + (refPoints === 1 ? ' ponto' : ' pontos') + ' <span style="font-weight:normal;opacity:0.8;cursor:help;">(?)</span></div>';
         }
-        
+
         return '<div class="pcard"><img class="pavatar" src="' + dicebearUrl(p.name) + '" alt=""><div style="flex:1;min-width:0;"><span class="pname">' + p.name + '</span>' + (p.phone ? '<div style="font-size:0.7rem;color:var(--muted-foreground);margin-top:1px;">' + formatPhone(p.phone) + '</div>' : '') + referredByText + referralsText + cotasText + '</div>'
           + '<div style="display:flex;gap:6px;align-items:center;">'
           + waBtn
@@ -5302,12 +5450,12 @@
           + '</div>';
       }).join('');
       lucide.createIcons();
-      
+
       // Also update referral select dropdown in addition form
       var refSel = document.getElementById('new-referred-by');
       if (refSel) {
         refSel.innerHTML = '<option value="">Quem indicou? (Ninguém)</option>' +
-          allParticipants.map(function(p) {
+          allParticipants.map(function (p) {
             return '<option value="' + p.id + '">' + p.name + '</option>';
           }).join('');
       }
@@ -5317,25 +5465,25 @@
       var referrerId = document.getElementById('edit-p-id').value;
       var refereeId = document.getElementById('edit-p-add-referred-sel').value;
       if (!refereeId) return;
-      
+
       if (wouldCreateCycleClient(refereeId, referrerId)) {
         toast('Indicação inválida: cria uma indicação cruzada ou circular', 'err');
         return;
       }
-      
-      var referee = allParticipants.find(function(p) { return p.id === refereeId; });
+
+      var referee = allParticipants.find(function (p) { return p.id === refereeId; });
       if (!referee) return;
-      
+
       apiFetch('PUT', '/api/participants/' + refereeId, {
         name: referee.name,
         phone: referee.phone,
         cotas: referee.cotas,
         referred_by: referrerId
-      }, { 'x-admin-pin': session.pin }).then(function(r) {
+      }, { 'x-admin-pin': session.pin }).then(function (r) {
         if (r && r.error) { toast(r.error, 'err'); return; }
         toast(referee.name + ' agora é indicado por ' + document.getElementById('edit-p-name').value);
-        
-        apiFetch('GET', '/api/participants').then(function(list) {
+
+        apiFetch('GET', '/api/participants').then(function (list) {
           allParticipants = Array.isArray(list) ? list : [];
           refreshEditReferredList(referrerId);
           renderParticipantsList();
@@ -5345,19 +5493,19 @@
 
     function removeReferredParticipant(refereeId) {
       var referrerId = document.getElementById('edit-p-id').value;
-      var referee = allParticipants.find(function(p) { return p.id === refereeId; });
+      var referee = allParticipants.find(function (p) { return p.id === refereeId; });
       if (!referee) return;
-      
+
       apiFetch('PUT', '/api/participants/' + refereeId, {
         name: referee.name,
         phone: referee.phone,
         cotas: referee.cotas,
         referred_by: null
-      }, { 'x-admin-pin': session.pin }).then(function(r) {
+      }, { 'x-admin-pin': session.pin }).then(function (r) {
         if (r && r.error) { toast(r.error, 'err'); return; }
         toast('Indicação de ' + referee.name + ' removida');
-        
-        apiFetch('GET', '/api/participants').then(function(list) {
+
+        apiFetch('GET', '/api/participants').then(function (list) {
           allParticipants = Array.isArray(list) ? list : [];
           refreshEditReferredList(referrerId);
           renderParticipantsList();
@@ -5366,19 +5514,19 @@
     }
 
     function refreshEditReferredList(referrerId) {
-      var referred = allParticipants.filter(function(p) { return p.referred_by === referrerId; });
+      var referred = allParticipants.filter(function (p) { return p.referred_by === referrerId; });
       var listEl = document.getElementById('edit-p-referred-list');
       var countEl = document.getElementById('edit-p-referred-count');
-      
+
       if (countEl) {
         countEl.textContent = referred.length + (referred.length === 1 ? ' ponto' : ' pontos');
       }
-      
+
       if (listEl) {
         if (referred.length === 0) {
           listEl.innerHTML = '<div style="color:var(--muted-foreground);font-size:0.8rem;text-align:center;padding:10px 0;">Nenhum indicado ainda.</div>';
         } else {
-          listEl.innerHTML = referred.map(function(p) {
+          listEl.innerHTML = referred.map(function (p) {
             return '<div style="display:flex;align-items:center;justify-content:space-between;font-size:0.85rem;padding:4px 6px;background:#18181b;border:1px solid var(--border);border-radius:4px;">' +
               '<span>' + p.name + '</span>' +
               '<button type="button" class="btn-sm" style="padding:2px 6px;font-size:0.75rem;border-color:var(--red);color:var(--red);" onclick="removeReferredParticipant(\'' + p.id + '\')">Remover</button>' +
@@ -5386,13 +5534,13 @@
           }).join('');
         }
       }
-      
+
       var addSel = document.getElementById('edit-p-add-referred-sel');
       if (addSel) {
-        var candidates = allParticipants.filter(function(p) { return p.id !== referrerId && p.referred_by !== referrerId && !wouldCreateCycleClient(p.id, referrerId); });
+        var candidates = allParticipants.filter(function (p) { return p.id !== referrerId && p.referred_by !== referrerId && !wouldCreateCycleClient(p.id, referrerId); });
         addSel.innerHTML = '<option value="">Adicionar indicado...</option>' +
-          candidates.map(function(p) {
-            var suffix = p.referred_by ? ' (Já indicado por ' + (allParticipants.find(function(x) { return x.id === p.referred_by; })?.name || 'outro') + ')' : '';
+          candidates.map(function (p) {
+            var suffix = p.referred_by ? ' (Já indicado por ' + (allParticipants.find(function (x) { return x.id === p.referred_by; })?.name || 'outro') + ')' : '';
             return '<option value="' + p.id + '">' + p.name + suffix + '</option>';
           }).join('');
       }
@@ -5401,17 +5549,17 @@
     function wouldCreateCycleClient(participantId, potentialReferrerId) {
       if (!potentialReferrerId) return false;
       if (participantId === potentialReferrerId) return true;
-      
+
       var current = potentialReferrerId;
       var visited = {};
       visited[participantId] = true;
-      
+
       while (current) {
         if (visited[current]) {
           return true;
         }
         visited[current] = true;
-        var p = allParticipants.find(function(x) { return x.id === current; });
+        var p = allParticipants.find(function (x) { return x.id === current; });
         current = p ? p.referred_by : null;
       }
       return false;
@@ -5420,20 +5568,20 @@
     function openMyReferralsModal() {
       if (!session || session.type !== 'participant') return;
       var myId = session.id;
-      
+
       var totalReferrals = allParticipants.filter(function (p) { return p.referred_by; }).length;
       var valuePerPoint = totalReferrals > 0 ? ((currentArrecadado * 0.02) / totalReferrals) : 0;
       var referred = allParticipants.filter(function (p) { return p.referred_by === myId; });
       var myPoints = referred.length;
       var myBonus = myPoints * valuePerPoint;
-      
+
       // Calculate my rank in referrals
-      var refCounts = allParticipants.map(function(p) {
-        var count = allParticipants.filter(function(x) { return x.referred_by === p.id; }).length;
+      var refCounts = allParticipants.map(function (p) {
+        var count = allParticipants.filter(function (x) { return x.referred_by === p.id; }).length;
         return { id: p.id, count: count };
       });
-      refCounts.sort(function(a, b) { return b.count - a.count; });
-      
+      refCounts.sort(function (a, b) { return b.count - a.count; });
+
       var myRank = 1;
       var previousCount = -1;
       var rankInList = 1;
@@ -5448,17 +5596,17 @@
         }
       }
       var totalParticipants = allParticipants.length;
-      
+
       var fmt = function (num) {
         return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       };
-      
+
       document.getElementById('my-ref-rank').innerHTML = 'Você está em <strong>' + myRank + 'º lugar</strong> de <strong>' + totalParticipants + '</strong> em indicações';
       document.getElementById('my-ref-points').textContent = myPoints + (myPoints === 1 ? ' ponto' : ' pontos');
       document.getElementById('my-ref-total-fund').textContent = fmt(currentArrecadado * 0.02);
       document.getElementById('my-ref-point-value').textContent = fmt(valuePerPoint);
       document.getElementById('my-ref-bonus').textContent = fmt(myBonus);
-      
+
       var listEl = document.getElementById('my-referrals-list');
       if (listEl) {
         if (referred.length === 0) {
@@ -5472,14 +5620,14 @@
           }).join('');
         }
       }
-      
+
       var shareModal = document.getElementById('share-ref-link-modal');
       if (shareModal) {
         shareModal.value = window.location.origin + '?ref=' + session.id;
       }
       document.getElementById('my-referrals-overlay').classList.remove('hide');
     }
-    
+
     function closeMyReferralsModal() {
       document.getElementById('my-referrals-overlay').classList.add('hide');
     }
@@ -5517,7 +5665,17 @@
     function clearRefPin() {
       [0, 1, 2, 3].forEach(function (i) { document.getElementById('rp' + i).value = ''; });
     }
-    
+    function updateRefSignupTotal() {
+      var input = document.getElementById('ref-signup-cotas');
+      var val = parseInt(input ? input.value : 1);
+      if (isNaN(val) || val < 1) val = 1;
+      var total = val * 25;
+      var totalVal = document.getElementById('ref-signup-total-val');
+      if (totalVal) {
+        totalVal.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+      }
+    }
+
     var currentReferrerId = null;
     function openReferralSignup(referrerId) {
       currentReferrerId = referrerId;
@@ -5525,7 +5683,7 @@
       apiFetch('GET', '/api/participants').then(function (list) {
         var referrerName = 'Alguém';
         if (Array.isArray(list)) {
-          var referrer = list.find(function(p) { return p.id === referrerId; });
+          var referrer = list.find(function (p) { return p.id === referrerId; });
           if (referrer) referrerName = referrer.name;
         }
         var subEl = document.getElementById('ref-signup-subtitle');
@@ -5533,40 +5691,47 @@
           subEl.innerHTML = 'Você foi indicado por <strong>' + referrerName + '</strong> para participar do Bolão UNK!';
         }
       });
-      
+
       // Reset form
       document.getElementById('ref-signup-name').value = '';
       document.getElementById('ref-signup-phone').value = '';
       clearRefPin();
+      var cotasInput = document.getElementById('ref-signup-cotas');
+      if (cotasInput) {
+        cotasInput.value = '1';
+        updateRefSignupTotal();
+      }
       document.getElementById('ref-signup-err').textContent = '';
       document.getElementById('ref-signup-form-body').style.display = '';
       document.getElementById('ref-signup-success-body').style.display = 'none';
-      
+
       document.getElementById('referral-signup-overlay').classList.remove('hide');
-      setTimeout(function() { document.getElementById('ref-signup-name').focus(); }, 100);
+      setTimeout(function () { document.getElementById('ref-signup-name').focus(); }, 100);
     }
-    
+
     function closeReferralSignup() {
       // Clear referral query parameter from URL
       try {
         var url = new URL(window.location.href);
         url.searchParams.delete('ref');
         window.history.replaceState({}, document.title, url.pathname + url.search);
-      } catch(e) {}
+      } catch (e) { }
       document.getElementById('referral-signup-overlay').classList.add('hide');
     }
-    
     function submitReferralSignup() {
       var name = document.getElementById('ref-signup-name').value.trim();
       var phone = document.getElementById('ref-signup-phone').value.trim();
       var pin = getRefPin();
+      var cotasInput = document.getElementById('ref-signup-cotas');
+      var cotasVal = parseInt(cotasInput ? cotasInput.value : 1);
+      if (isNaN(cotasVal) || cotasVal < 1) cotasVal = 1;
       var errEl = document.getElementById('ref-signup-err');
       errEl.textContent = '';
-      
+
       if (!name) { errEl.textContent = 'Por favor, informe seu nome de usuário.'; return; }
       if (phone.replace(/\D/g, '').length < 10) { errEl.textContent = 'Por favor, informe um WhatsApp válido.'; return; }
       if (pin.length < 4) { errEl.textContent = 'Por favor, digite os 4 dígitos do seu PIN.'; return; }
-      
+
       var btn = document.getElementById('btn-submit-ref-signup');
       var origHtml = btn ? btn.innerHTML : '';
       if (btn) {
@@ -5574,80 +5739,88 @@
         btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width:14px;height:14px;margin-right:4px;"></i>Enviando...';
         lucide.createIcons();
       }
-      
+
       apiFetch('POST', '/api/participants/request', {
         name: name,
         phone: phone,
         pin: pin,
+        cotas: cotasVal,
         referred_by: currentReferrerId
-      }).then(function(r) {
+      }).then(function (r) {
         if (btn) { btn.disabled = false; btn.innerHTML = origHtml; lucide.createIcons(); }
         if (r.error) { errEl.textContent = r.error; return; }
-        
+
         // Success screen
-        document.getElementById('ref-success-name').textContent = name;
-        document.getElementById('ref-signup-form-body').style.display = 'none';
-        
+        document.getElementById('ref-success-name').textContent = r.name;
+        var cotas = r.cotas || 1;
+        var total = cotas * 25;
+        document.getElementById('ref-success-cotas').textContent = cotas + ' ' + (cotas > 1 ? 'cotas' : 'cota');
+        document.getElementById('ref-success-total').textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+
         // Format whatsapp link
-        var waMsg = 'Olá! Acabei de solicitar participação no Bolão UNK sob o nome "' + name + '". Segue o comprovante do PIX.';
+        var waMsg = 'Olá! Enviei uma solicitação de participação no Bolão UNK sob o nome "' + r.name + '" com ' + cotas + ' ' + (cotas > 1 ? 'cotas' : 'cota') + '. Segue o comprovante de pagamento no valor de R$ ' + total.toFixed(2).replace('.', ',') + '.';
         var waUrl = 'https://wa.me/5585998091910?text=' + encodeURIComponent(waMsg);
         document.getElementById('ref-whatsapp-btn').href = waUrl;
-        
+
+        document.getElementById('ref-signup-form-body').style.display = 'none';
         document.getElementById('ref-signup-success-body').style.display = '';
         lucide.createIcons();
       });
     }
-    
     function copyReferralLink(inputId) {
       var input = document.getElementById(inputId);
       if (!input) return;
       input.select();
       input.setSelectionRange(0, 99999); // For mobile
       try {
-        navigator.clipboard.writeText(input.value).then(function() {
+        navigator.clipboard.writeText(input.value).then(function () {
           toast('Link copiado para a área de transferência!');
         });
-      } catch(e) {
+      } catch (e) {
         document.execCommand('copy');
         toast('Link copiado!');
       }
     }
-    
+
     // ─── Admin Pending Approvals ──────────────────────────────────────────────────
     function renderPendingList(list) {
       var card = document.getElementById('admin-pending-card');
       var el = document.getElementById('admin-pending-list');
       var countEl = document.getElementById('admin-pending-count');
       if (!card || !el) return;
-      
+
       if (!list || list.length === 0) {
         card.style.display = 'none';
         return;
       }
-      
+
       card.style.display = 'block';
       countEl.textContent = list.length + (list.length === 1 ? ' pendente' : ' pendentes');
-      
-      el.innerHTML = list.map(function(p) {
+      el.innerHTML = list.map(function (p) {
         var referrerText = 'Ninguém';
         if (p.referred_by) {
-          var referrer = allParticipants.find(function(x) { return x.id === p.referred_by; });
+          var referrer = allParticipants.find(function (x) { return x.id === p.referred_by; });
           if (referrer) {
             referrerText = '<strong>' + referrer.name + '</strong>';
           }
         }
-        
+
         var waBtn = '';
         if (p.phone) {
           var waNum = '55' + p.phone.replace(/\D/g, '');
           var waUrl = 'https://wa.me/' + waNum + '?text=' + encodeURIComponent('Olá ' + p.name.split(' ')[0] + '! Aqui é o admin do Bolão UNK. Recebi sua solicitação de participação.');
           waBtn = '<a href="' + waUrl + '" target="_blank" rel="noopener" class="btn-icon btn-wa" title="WhatsApp: ' + formatPhone(p.phone) + '" style="margin-left: 6px;"><i data-lucide="message-circle" style="width:14px;height:14px;"></i></a>';
         }
-        
+
+        var cotasVal = p.cotas || 1;
+        var cotasText = cotasVal + ' ' + (cotasVal === 1 ? 'cota' : 'cotas');
+        var expectedValue = cotasVal * 25;
+
         return '<div class="pcard" style="border-color:rgba(230,57,70,0.25); background:rgba(230,57,70,0.02); display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); padding:10px 14px;">'
           + '<img class="pavatar" src="' + dicebearUrl(p.name) + '" alt="">'
           + '<div style="flex:1; min-width:0;">'
           + '<span class="pname">' + p.name + '</span>'
+          + '<div style="font-size:0.7rem; color:var(--muted-foreground); margin-top:1px;">Cotas: <strong style="color:var(--gold)">' + cotasText + '</strong> (PIX: <strong style="color:var(--gold)">R$ ' + expectedValue + ',00</strong>)</div>'
           + (p.phone ? '<div style="font-size:0.7rem; color:var(--muted-foreground); margin-top:1px;">' + formatPhone(p.phone) + '</div>' : '')
           + '<div style="font-size:0.7rem; color:var(--muted-foreground); margin-top:1px;">Indicado por: ' + referrerText + '</div>'
           + '</div>'
@@ -5658,22 +5831,23 @@
           + '</div>'
           + '</div>';
       }).join('');
+
       lucide.createIcons();
     }
-    
+
     function approveParticipantRequest(id, name) {
       if (!confirm('Deseja aprovar a solicitação de "' + name + '" e liberar o acesso?')) return;
-      apiFetch('PUT', '/api/participants/' + id + '/approve', null, { 'x-admin-pin': session.pin }).then(function(r) {
+      apiFetch('PUT', '/api/participants/' + id + '/approve', null, { 'x-admin-pin': session.pin }).then(function (r) {
         if (r.error) { toast(r.error, 'err'); return; }
         toast('Participante "' + name + '" aprovado com sucesso!');
         loadAdmin();
       });
     }
-    
+
     // We already have a DELETE endpoint in backend that rejects/removes a participant completely.
     function rejectParticipantRequest(id, name) {
       if (!confirm('Deseja rejeitar e excluir a solicitação de "' + name + '"?')) return;
-      apiFetch('DELETE', '/api/participants/' + id, null, { 'x-admin-pin': session.pin }).then(function(r) {
+      apiFetch('DELETE', '/api/participants/' + id, null, { 'x-admin-pin': session.pin }).then(function (r) {
         if (r.error) { toast(r.error, 'err'); return; }
         toast('Solicitação de "' + name + '" recusada.');
         loadAdmin();
@@ -5687,96 +5861,144 @@
     function initPushNotifications() {
       if ('serviceWorker' in navigator && 'PushManager' in window) {
         navigator.serviceWorker.register('/sw.js')
-          .then(function(reg) {
+          .then(function (reg) {
             swRegistration = reg;
             reg.pushManager.getSubscription()
-              .then(function(subscription) {
+              .then(function (subscription) {
                 isPushSubscribed = (subscription !== null);
                 updatePushSubscriptionButton();
                 if (isPushSubscribed && session && session.type === 'participant') {
                   syncPushSubscription(subscription);
                 }
+                if (typeof initPwaInstallHelper === 'function') {
+                  initPwaInstallHelper();
+                }
               });
           })
-          .catch(function(err) {
+          .catch(function (err) {
             console.error('Service Worker registration failed:', err);
           });
       } else {
-        var btn = document.getElementById('btn-push-subscribe');
+        var btn = document.getElementById('btn-push-subscribe-unified');
         if (btn) btn.style.display = 'none';
+        var btnHeader = document.getElementById('btn-push-subscribe-header');
+        if (btnHeader) btnHeader.style.display = 'none';
       }
     }
 
     function updatePushSubscriptionButton() {
-      var btn = document.getElementById('btn-push-subscribe');
-      if (!btn) return;
-      
-      if (isPushSubscribed) {
-        btn.innerHTML = '<i data-lucide="bell-off" style="width: 14px; height: 14px; margin-right: 6px; display: inline-block; vertical-align: -2px;"></i> Desativar Alertas';
-        btn.style.background = '#27272a';
-        btn.style.borderColor = 'var(--border)';
-      } else {
-        btn.innerHTML = '<i data-lucide="bell" style="width: 14px; height: 14px; margin-right: 6px; display: inline-block; vertical-align: -2px;"></i> Receber Alertas';
-        btn.style.background = '#2563eb';
-        btn.style.borderColor = '#2563eb';
+      // 1. Update the header bell button if it exists
+      var btnHeader = document.getElementById('btn-push-subscribe-header');
+      if (btnHeader) {
+        if (isPushSubscribed) {
+          btnHeader.innerHTML = '<i data-lucide="bell-ring" style="width: 16px; height: 16px;"></i>';
+          btnHeader.style.color = 'var(--gold)'; // Gold active color
+          btnHeader.title = 'Alertas Ativos (Clique para Desativar)';
+        } else {
+          btnHeader.innerHTML = '<i data-lucide="bell" style="width: 16px; height: 16px;"></i>';
+          btnHeader.style.color = 'var(--muted-foreground)';
+          btnHeader.title = 'Ativar Alertas';
+        }
       }
+
+      // 2. Update the unified banner button
+      var btnUnified = document.getElementById('btn-push-subscribe-unified');
+      if (btnUnified) {
+        if (isPushSubscribed) {
+          btnUnified.innerHTML = '<i data-lucide="bell-off" style="width: 12px; height: 12px; margin-right: 4px; display:inline-block; vertical-align:-1px;"></i> Desativar Alertas';
+          btnUnified.style.background = '#27272a';
+          btnUnified.style.borderColor = 'var(--border)';
+        } else {
+          btnUnified.innerHTML = '<i data-lucide="bell" style="width: 12px; height: 12px; margin-right: 4px; display:inline-block; vertical-align:-1px;"></i> Ativar Alertas';
+          btnUnified.style.background = '#2563eb';
+          btnUnified.style.borderColor = '#2563eb';
+        }
+      }
+
+      // If they subscribed to push, we can hide the unified banner!
+      if (isPushSubscribed) {
+        var banner = document.getElementById('pwa-unified-banner');
+        if (banner) banner.style.display = 'none';
+      }
+
       lucide.createIcons();
     }
 
     function togglePushSubscription() {
-      var btn = document.getElementById('btn-push-subscribe');
-      if (!btn || !swRegistration) return;
-      
-      btn.disabled = true;
-      
+      localStorage.removeItem('pwa_banner_dismissed');
+      var banner = document.getElementById('pwa-unified-banner');
+      if (banner && banner.style.display === 'none' && !isPushSubscribed) {
+        if (typeof initPwaInstallHelper === 'function') {
+          initPwaInstallHelper();
+        }
+        toast('Painel de alertas e instalação reativado.');
+        return;
+      }
+
+      if (!swRegistration) return;
+
+      var btnUnified = document.getElementById('btn-push-subscribe-unified');
+      var btnHeader = document.getElementById('btn-push-subscribe-header');
+
+      if (btnUnified) btnUnified.disabled = true;
+      if (btnHeader) btnHeader.disabled = true;
+
+      function setDisabled(val) {
+        if (btnUnified) btnUnified.disabled = val;
+        if (btnHeader) btnHeader.disabled = val;
+      }
+
       if (isPushSubscribed) {
         swRegistration.pushManager.getSubscription()
-          .then(function(subscription) {
+          .then(function (subscription) {
             if (subscription) {
-              subscription.unsubscribe().then(function(successful) {
+              subscription.unsubscribe().then(function (successful) {
                 if (successful) {
                   isPushSubscribed = false;
                   updatePushSubscriptionButton();
                   toast('Alertas desativados.');
+                  if (typeof initPwaInstallHelper === 'function') {
+                    initPwaInstallHelper();
+                  }
                 }
-                btn.disabled = false;
-              }).catch(function(err) {
+                setDisabled(false);
+              }).catch(function (err) {
                 console.error('Error unsubscribing:', err);
-                btn.disabled = false;
+                setDisabled(false);
               });
             } else {
-              btn.disabled = false;
+              setDisabled(false);
             }
           });
       } else {
-        apiFetch('GET', '/api/push/vapid-public-key').then(function(r) {
+        apiFetch('GET', '/api/push/vapid-public-key').then(function (r) {
           if (!r || !r.publicKey) {
             toast('Erro de conexão ao servidor push.', 'err');
-            btn.disabled = false;
+            setDisabled(false);
             return;
           }
-          
+
           var convertedKey = urlBase64ToUint8Array(r.publicKey);
           swRegistration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: convertedKey
           })
-          .then(function(subscription) {
-            isPushSubscribed = true;
-            updatePushSubscriptionButton();
-            btn.disabled = false;
-            syncPushSubscription(subscription);
-            toast('Você receberá alertas neste dispositivo!');
-          })
-          .catch(function(err) {
-            console.error('Failed to subscribe:', err);
-            btn.disabled = false;
-            if (Notification.permission === 'denied') {
-              toast('Permissão de notificações negada pelo navegador.', 'err');
-            } else {
-              toast('Erro ao ativar notificações.', 'err');
-            }
-          });
+            .then(function (subscription) {
+              isPushSubscribed = true;
+              updatePushSubscriptionButton();
+              setDisabled(false);
+              syncPushSubscription(subscription);
+              toast('Você receberá alertas neste dispositivo!');
+            })
+            .catch(function (err) {
+              console.error('Failed to subscribe:', err);
+              setDisabled(false);
+              if (Notification.permission === 'denied') {
+                toast('Permissão de notificações negada pelo navegador.', 'err');
+              } else {
+                toast('Erro ao ativar notificações.', 'err');
+              }
+            });
         });
       }
     }
@@ -5793,12 +6015,12 @@
       var title = document.getElementById('push-title').value.trim();
       var body = document.getElementById('push-body').value.trim();
       var url = document.getElementById('push-url').value.trim();
-      
+
       if (!title || !body) {
         toast('Preencha o título e a mensagem.', 'err');
         return;
       }
-      
+
       var btn = document.getElementById('btn-send-push');
       var origHtml = btn ? btn.innerHTML : '';
       if (btn) {
@@ -5806,19 +6028,19 @@
         btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i> Enviando...';
         lucide.createIcons();
       }
-      
+
       apiFetch('POST', '/api/push/send', {
         title: title,
         body: body,
         url: url || '/'
-      }, { 'x-admin-pin': session.pin }).then(function(r) {
+      }, { 'x-admin-pin': session.pin }).then(function (r) {
         if (btn) { btn.disabled = false; btn.innerHTML = origHtml; lucide.createIcons(); }
         if (r && r.error) { toast(r.error, 'err'); return; }
-        
+
         document.getElementById('push-title').value = '';
         document.getElementById('push-body').value = '';
         document.getElementById('push-url').value = '';
-        
+
         toast('Notificação enviada com sucesso!');
       });
     }
@@ -5836,6 +6058,105 @@
       return outputArray;
     }
 
+    // ─── PWA Custom Install Prompt Helper ──────────────────────────────────────────
+    var deferredPrompt = null;
+    var isRunningStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone || false;
+    var isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+    function initPwaInstallHelper() {
+      var banner = document.getElementById('pwa-unified-banner');
+      var btnInstall = document.getElementById('btn-pwa-install-unified');
+      var btnSubscribe = document.getElementById('btn-push-subscribe-unified');
+      var msgText = document.getElementById('pwa-unified-msg');
+
+      if (!banner) return;
+
+      var dismissed = localStorage.getItem('pwa_banner_dismissed') === 'true';
+      if (!session || session.type !== 'participant' || dismissed || isPushSubscribed) {
+        banner.style.display = 'none';
+        return;
+      }
+
+      banner.style.display = 'block';
+
+      if (isIos) {
+        if (btnInstall) btnInstall.style.display = 'none';
+        if (isRunningStandalone) {
+          if (btnSubscribe) btnSubscribe.style.display = 'inline-flex';
+          if (msgText) {
+            msgText.innerHTML = 'Ative as notificações para receber alertas imediatos de novos jogos, resultados e avisos.';
+          }
+        } else {
+          if (btnSubscribe) btnSubscribe.style.display = 'none';
+          if (msgText) {
+            msgText.innerHTML = '<strong>Aviso do iPhone (iOS):</strong> Para receber alertas, toque no botão de compartilhar <i data-lucide="share" style="width:12px;height:12px;display:inline-block;vertical-align:-1px;"></i> e escolha <strong>"Adicionar à Tela de Início"</strong>. Depois abra o app por lá!';
+          }
+          lucide.createIcons();
+        }
+      } else {
+        if (btnSubscribe) btnSubscribe.style.display = 'inline-flex';
+        
+        var showInstall = !isRunningStandalone && deferredPrompt;
+        if (showInstall) {
+          if (btnInstall) btnInstall.style.display = 'inline-flex';
+          if (msgText) {
+            msgText.innerHTML = 'Ative as notificações para receber alertas imediatos de novos jogos, resultados e avisos, ou instale o aplicativo.';
+          }
+        } else {
+          if (btnInstall) btnInstall.style.display = 'none';
+          if (msgText) {
+            msgText.innerHTML = 'Ative as notificações para receber alertas imediatos de novos jogos, resultados e avisos.';
+          }
+        }
+      }
+    }
+
+    function dismissPwaBanner() {
+      localStorage.setItem('pwa_banner_dismissed', 'true');
+      var banner = document.getElementById('pwa-unified-banner');
+      if (banner) {
+        banner.style.display = 'none';
+      }
+    }
+
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (typeof initPwaInstallHelper === 'function') {
+        initPwaInstallHelper();
+      }
+    });
+
+    function triggerPwaInstall() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function (choiceResult) {
+        if (choiceResult.outcome === 'accepted') {
+          console.log('User accepted the install prompt');
+          var banner = document.getElementById('pwa-unified-banner');
+          if (banner) banner.style.display = 'none';
+        }
+        deferredPrompt = null;
+      });
+    }
+
+    function copyPixKey() {
+      var key = document.getElementById('pix-key-val').textContent;
+      try {
+        navigator.clipboard.writeText(key).then(function () {
+          toast('Chave PIX copiada!');
+        });
+      } catch (e) {
+        var dummy = document.createElement("textarea");
+        document.body.appendChild(dummy);
+        dummy.value = key;
+        dummy.select();
+        document.execCommand("copy");
+        document.body.removeChild(dummy);
+        toast('Chave PIX copiada!');
+      }
+    }
+
     [0, 1, 2, 3].forEach(function (i) {
       document.getElementById('p' + i).addEventListener('keydown', function (e) {
         if (e.key === 'Backspace' && !this.value && i > 0) document.getElementById('p' + (i - 1)).focus();
@@ -5843,6 +6164,75 @@
       });
     });
   </script>
+
+  <!-- Floating Unified PWA & Notifications Banner -->
+  <style>
+    .floating-pwa-banner {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 10000;
+      width: calc(100% - 40px);
+      max-width: 360px;
+      background: #18181b;
+      border: 1px solid var(--border);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      border-radius: 8px;
+      padding: 12px 16px;
+      box-sizing: border-box;
+      animation: slideInUp 0.3s ease-out;
+    }
+    @keyframes slideInUp {
+      from { transform: translateY(100px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    @media (max-width: 480px) {
+      .floating-pwa-banner {
+        bottom: 12px;
+        right: 12px;
+        left: 12px;
+        width: auto;
+        max-width: none;
+      }
+    }
+  </style>
+
+  <div id="pwa-unified-banner" class="floating-pwa-banner" style="display:none;">
+    <!-- Close / Dismiss button in the top right -->
+    <button onclick="dismissPwaBanner()" title="Ignorar este aviso"
+      style="position: absolute; top: 8px; right: 10px; background: none; border: none; color: var(--muted-foreground); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; opacity: 0.6; transition: opacity 0.2s;"
+      onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">
+      <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+    </button>
+    
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; gap: 8px; align-items: flex-start; padding-right: 18px;">
+        <div style="background: rgba(37, 99, 235, 0.1); color: #60a5fa; padding: 6px; border-radius: 6px; display: flex; align-items: center; justify-content: center; margin-top: 1px;">
+          <i data-lucide="bell" style="width: 16px; height: 16px;"></i>
+        </div>
+        <div>
+          <div style="font-family: 'Oswald', sans-serif; font-size: 0.9rem; color: var(--foreground); font-weight: 600;">
+            Instalar App & Alertas
+          </div>
+          <div id="pwa-unified-msg" style="font-size: 0.75rem; color: var(--muted-foreground); margin-top: 2px; line-height: 1.3;">
+            Ative as notificações para receber alertas imediatos de novos jogos, resultados e avisos, ou instale o aplicativo.
+          </div>
+        </div>
+      </div>
+      
+      <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 8px; margin-top: 2px;">
+        <!-- Standard Android/Chrome Install button -->
+        <button class="btn-add" id="btn-pwa-install-unified" onclick="triggerPwaInstall()"
+          style="display:none; padding: 5px 10px; background: #10b981; border-color: #10b981; color: #fff; font-size: 0.75rem; font-weight: 600; display:flex; align-items:center; gap:4px; justify-content:center; margin: 0; height: 28px;">
+          <i data-lucide="plus-circle" style="width: 12px; height: 12px;"></i> Instalar App
+        </button>
+        <button class="btn-add" id="btn-push-subscribe-unified" onclick="togglePushSubscription()"
+          style="padding: 5px 10px; background: #2563eb; border-color: #2563eb; color: #fff; font-size: 0.75rem; font-weight: 600; display:flex; align-items:center; gap:4px; justify-content:center; margin: 0; height: 28px; min-width: 110px;">
+          <i data-lucide="bell" style="width: 12px; height: 12px;"></i> Ativar Alertas
+        </button>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>

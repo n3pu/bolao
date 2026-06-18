@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bolao-unk-v1';
+const CACHE_NAME = 'bolao-unk-v2';
 const ASSETS = [
   '/',
   '/index.html',
@@ -9,6 +9,20 @@ self.addEventListener('install', function(event) {
   event.waitUntil(
     caches.open(CACHE_NAME).then(function(cache) {
       return cache.addAll(ASSETS);
+    })
+  );
+});
+
+self.addEventListener('activate', function(event) {
+  event.waitUntil(
+    caches.keys().then(function(cacheNames) {
+      return Promise.all(
+        cacheNames.map(function(cacheName) {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
     })
   );
 });
