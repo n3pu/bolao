@@ -2175,6 +2175,167 @@
       border-color: var(--gold);
       font-weight: 600;
     }
+
+    /* Live Status Badges & Banners */
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(16, 185, 129, 0.12);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .live-badge .pulse-dot {
+      width: 6px;
+      height: 6px;
+      background: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      animation: pulse-green 1.5s infinite;
+    }
+
+    @keyframes pulse-green {
+      0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      }
+      70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 5px rgba(16, 185, 129, 0);
+      }
+      100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+      }
+    }
+
+    .finished-badge {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(161, 161, 170, 0.1);
+      color: var(--muted-foreground);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .live-ranking-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(230, 57, 70, 0.08);
+      border: 1px solid rgba(230, 57, 70, 0.2);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.8rem;
+      color: #ff4d5a;
+      margin-bottom: 16px;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── Global Admin Banner ─────────────────────────────────────────────── */
+    .global-banner-wrap {
+      position: sticky;
+      top: 64px;
+      z-index: 90;
+      animation: slideDown 0.3s ease-out;
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .global-banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-bottom: 1px solid;
+    }
+
+    .global-banner.warning {
+      background: rgba(245, 158, 11, 0.12);
+      border-color: rgba(245, 158, 11, 0.3);
+      color: #fbbf24;
+    }
+
+    .global-banner.success {
+      background: rgba(16, 185, 129, 0.1);
+      border-color: rgba(16, 185, 129, 0.25);
+      color: #34d399;
+    }
+
+    .global-banner.danger {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.25);
+      color: #fca5a5;
+    }
+
+    .global-banner-icon {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+    }
+
+    .global-banner-text {
+      flex: 1;
+    }
+
+    .global-banner-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: inherit;
+      opacity: 0.7;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 1rem;
+      line-height: 1;
+      transition: opacity 0.2s;
+      flex-shrink: 0;
+    }
+
+    .global-banner-close:hover {
+      opacity: 1;
+    }
+
+    /* Comm Log Table */
+    .comm-log-type-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .comm-log-type-badge.push   { background: rgba(96,165,250,0.15); color: #60a5fa; border: 1px solid rgba(96,165,250,0.25); }
+    .comm-log-type-badge.banner { background: rgba(167,139,250,0.15); color: #a78bfa; border: 1px solid rgba(167,139,250,0.25); }
+    .comm-log-sub-badge.warning { color: #fbbf24; }
+    .comm-log-sub-badge.success { color: #34d399; }
+    .comm-log-sub-badge.danger  { color: #fca5a5; }
   </style>
 </head>
 
@@ -2243,6 +2404,15 @@
     </div>
   </header>
 
+  <!-- Global Admin Banner -->
+  <div id="global-banner-wrap" class="global-banner-wrap" style="display:none;">
+    <div id="global-banner" class="global-banner warning">
+      <i id="global-banner-icon" data-lucide="alert-triangle" class="global-banner-icon"></i>
+      <span id="global-banner-text" class="global-banner-text"></span>
+      <button class="global-banner-close" onclick="dismissGlobalBanner()" title="Fechar">&#x2715;</button>
+    </div>
+  </div>
+
   <main>
     <!-- RANKING -->
     <div id="page-ranking" class="page on">
@@ -2310,6 +2480,11 @@
       </div>
 
       <div class="card">
+        <!-- Live Ranking Warning Banner -->
+        <div class="live-ranking-banner" id="live-ranking-banner" style="display: none;">
+          <i data-lucide="info" style="width: 14px; height: 14px; flex-shrink: 0;"></i>
+          <span><strong>Classificação parcial:</strong> Pontuação calculada com resultados provisórios de partidas ao vivo.</span>
+        </div>
         <div class="table-container">
           <table class="rtable">
             <thead>
@@ -2762,6 +2937,33 @@
         </div>
       </div>
 
+      <!-- BANNERS GLOBAIS (ADMIN) -->
+      <div class="card" style="border-color: rgba(167,139,250,0.35); background: rgba(167,139,250,0.01);">
+        <div class="sub-title" style="color: #a78bfa; display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+          <i data-lucide="megaphone" style="width:14px; height:14px;"></i> Banners Globais
+        </div>
+        <div style="font-size: 0.8rem; color: var(--muted-foreground); margin-bottom: 14px;">
+          Crie avisos que aparecem para todos os participantes em todo o app. O usuário pode fechar, mas volta ao ver se um novo banner for publicado.
+        </div>
+        <div class="form-row" style="flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 18px;">
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <select class="inp" id="banner-type" style="width:160px;">
+              <option value="warning">⚠️ Warning (Aviso)</option>
+              <option value="success">✅ Success (Sucesso)</option>
+              <option value="danger">🚨 Danger (Perigo)</option>
+            </select>
+            <input class="inp" id="banner-message" placeholder="Mensagem do banner para todos os usuários..." style="flex:1; min-width:200px;" onkeydown="if(event.key==='Enter')publishBanner()">
+          </div>
+          <button class="btn-add" id="btn-publish-banner" onclick="publishBanner()"
+            style="background: #7c3aed; border-color: #8b5cf6; color: #fff; align-self: flex-start; display:flex; align-items:center; gap:6px; margin:0;">
+            <i data-lucide="megaphone" style="width:14px;height:14px;"></i> Publicar Banner
+          </button>
+        </div>
+        <div id="admin-banners-list" style="display:flex; flex-direction:column; gap:8px;">
+          <div style="font-size:0.8rem; color:var(--muted-foreground); text-align:center; padding:10px;">Carregando...</div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="sub-title" style="display:flex; justify-content:space-between; align-items:center;">
           <span>Log de Apostas Recentes</span>
@@ -2782,6 +2984,33 @@
               <tr>
                 <td colspan="4" class="empty" style="text-align:center">Nenhuma aposta registrada.</td>
               </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- LOG DE COMUNICAÇÕES (ADMIN) -->
+      <div class="card" style="border-color: rgba(100,116,139,0.3);">
+        <div class="sub-title" style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="display:flex; align-items:center; gap:6px;">
+            <i data-lucide="activity" style="width:14px;height:14px;color:var(--muted-foreground)"></i>
+            Log de Comunicações
+            <span style="font-size:0.72rem; color:var(--muted-foreground); font-weight:400;">(10 dias)</span>
+          </span>
+          <button class="btn-sm" style="padding: 4px 10px;" onclick="loadCommLog()"><i data-lucide="refresh-cw" style="width:12px;height:12px"></i></button>
+        </div>
+        <div class="table-container" style="max-height: 300px; overflow-y: auto;">
+          <table class="rtable" style="font-size: 0.82rem;">
+            <thead>
+              <tr>
+                <th style="width:110px">Data/Hora</th>
+                <th style="width:90px">Tipo</th>
+                <th>Mensagem</th>
+                <th style="width:80px">Detalhes</th>
+              </tr>
+            </thead>
+            <tbody id="comm-log-body">
+              <tr><td colspan="4" class="empty" style="text-align:center">Carregando...</td></tr>
             </tbody>
           </table>
         </div>
@@ -3455,6 +3684,8 @@
       if (name === 'jogos') loadJogos();
       if (name === 'apostas') loadApostas();
       if (name === 'admin') loadAdmin();
+      // Always check for active global banner on each navigation
+      setTimeout(fetchGlobalBanner, 100);
     }
 
     function updateHeader() {
@@ -3607,8 +3838,19 @@
     // ─── Ranking ──────────────────────────────────────────────────────────────────
     function loadRanking() {
       renderRankingSkeleton();
-      apiFetch('GET', '/api/ranking').then(function (data) {
+      Promise.all([
+        apiFetch('GET', '/api/ranking'),
+        apiFetch('GET', '/api/matches')
+      ]).then(function (results) {
+        var data = results[0];
+        var matches = Array.isArray(results[1]) ? results[1] : [];
         var tbody = document.getElementById('ranking-body');
+
+        // Show or hide the live banner
+        var hasLive = matches.some(function (m) { return m.result && m.result.status === 'live'; });
+        var banner = document.getElementById('live-ranking-banner');
+        if (banner) banner.style.display = hasLive ? 'flex' : 'none';
+
         if (!data || data._err) {
           tbody.innerHTML = '<tr><td colspan="6"><div class="empty">Erro ao conectar ao servidor.</div></td></tr>';
           return;
@@ -3808,6 +4050,7 @@
 
           var scoreHtml = '';
           var isKO = m.round && !m.round.startsWith("Matchday");
+          var resultStatus = hasResult ? (m.result.status || 'finished') : null;
           if (isAdmin) {
             var penWinner = hasResult ? m.result.penalties_winner : null;
             var isTie = hasResult && m.result.score1 === m.result.score2;
@@ -3834,7 +4077,22 @@
               + '</div>'
               + penaltyHtml
               + '</div>';
-          } else if (hasResult) {
+          } else if (hasResult && resultStatus === 'live') {
+            // Match is LIVE (partial score) - show score with live styling, not as definitive
+            scoreHtml = '<div style="display:flex;flex-direction:column;align-items:center;width:100%;">'
+              + '<div class="sc">'
+              + '<div class="sbox" style="border-color:rgba(16,185,129,0.4);color:#10b981;background:rgba(16,185,129,0.08);font-size:1.6rem;">'
+              + m.result.score1
+              + '</div>'
+              + '<span class="ssep" style="color:#10b981;">:</span>'
+              + '<div class="sbox" style="border-color:rgba(16,185,129,0.4);color:#10b981;background:rgba(16,185,129,0.08);font-size:1.6rem;">'
+              + m.result.score2
+              + '</div>'
+              + '</div>'
+              + '<div style="margin-top:8px;text-align:center;"><span class="live-badge"><span class="pulse-dot"></span>AO VIVO</span></div>'
+              + '</div>';
+          } else if (hasResult && resultStatus !== 'live') {
+            // Match FINISHED - show definitive score
             var penHtml = '';
             if (isKO && m.result.score1 === m.result.score2 && m.result.penalties_winner) {
               penHtml = '<div style="font-size:0.75rem;color:var(--gold);margin-top:4px;text-align:center;font-weight:600;"><i data-lucide="trophy" style="width:10px;height:10px;margin-right:2px;display:inline-block;vertical-align:-1px"></i>Pênaltis: ' + tn(m.result.penalties_winner) + '</div>';
@@ -3844,14 +4102,32 @@
             scoreHtml = '<div class="sc"><span style="font-family:Oswald,sans-serif;font-size:1.5rem;color:var(--border)">VS</span></div>';
           }
 
+          var matchStatus = resultStatus;
           var actHtml = '';
           if (isAdmin) {
-            actHtml = '<button class="btn-save" onclick="saveResult(\'' + m.id + '\')"><i data-lucide="save" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>' + (hasResult ? 'Atualizar' : 'Salvar') + '</button>';
-            if (hasResult) {
-              actHtml += ' <button class="btn-del" style="margin-left:4px" onclick="clearResult(\'' + m.id + '\')"><i data-lucide="trash-2" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Remover</button>';
+            // Admin action buttons based on current status
+            var inputsHtml = '';
+            if (!hasResult || matchStatus === 'live') {
+              // Show "Salvar Parcial" (live) and "Finalizar" buttons
+              inputsHtml = '<button class="btn-save" style="background:rgba(16,185,129,0.15);border-color:#10b981;color:#10b981;" onclick="saveLiveResult(\'' + m.id + '\')"><i data-lucide="radio" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>' + (hasResult ? 'Atualizar Parcial' : 'Salvar Parcial') + '</button>'
+                + ' <button class="btn-save" onclick="saveFinishResult(\'' + m.id + '\')"><i data-lucide="flag" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Finalizar</button>';
+            } else if (matchStatus === 'finished') {
+              // Show "Reabrir" and "Atualizar" buttons
+              inputsHtml = '<button class="btn-save" style="background:rgba(245,158,11,0.15);border-color:#f59e0b;color:#f59e0b;" onclick="reopenResult(\'' + m.id + '\')"><i data-lucide="rotate-ccw" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Reabrir</button>'
+                + ' <button class="btn-save" onclick="saveFinishResult(\'' + m.id + '\')"><i data-lucide="save" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Atualizar</button>';
             }
-          } else if (hasResult) {
+            actHtml = inputsHtml;
+            if (hasResult) {
+              actHtml += ' <button class="btn-del" style="margin-left:4px" onclick="clearResult(\'' + m.id + '\')"><i data-lucide="trash-2" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Limpar</button>';
+            }
+          } else if (hasResult && matchStatus === 'live') {
+            // Live match: show AO VIVO badge (betting already closed since match started)
+            actHtml = '<span class="live-badge"><span class="pulse-dot"></span>Ao Vivo</span>';
+          } else if (hasResult && matchStatus === 'finished') {
             actHtml = '<span class="done-badge"><i data-lucide="lock" style="width:10px;height:10px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Palpites Encerrados</span>';
+          } else if (m.locked) {
+            // Locked (started) but no result yet
+            actHtml = '<span class="live-badge" style="background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.2);color:#f87171;"><span class="pulse-dot" style="background:#f87171;box-shadow:0 0 0 0 rgba(239,68,68,0.7);"></span>Em Andamento</span>';
           }
 
           var myBetInfoHtml = '';
@@ -3938,11 +4214,14 @@
             }
           }
 
+
           var statusBadgeHtml = '';
-          if (hasResult) {
+          if (resultStatus === 'live') {
+            statusBadgeHtml = '<span class="badge-status live">AO VIVO</span>';
+          } else if (resultStatus === 'finished') {
             statusBadgeHtml = '<span class="badge-status final">Placar Definido</span>';
           } else if (m.locked) {
-            statusBadgeHtml = '<span class="badge-status live">AO VIVO</span>';
+            statusBadgeHtml = '<span class="badge-status live">Em Andamento</span>';
           }
 
           var today = new Date();
@@ -3952,8 +4231,9 @@
           var todayStr = y + '-' + m_ + '-' + d;
 
           var isToday = matchDate(m) === todayStr;
-          var isLive = m.locked && !hasResult;
-          var isPast = (m.locked || hasResult) && !isToday && !isLive;
+          var isMatchLive = resultStatus === 'live';
+          var isLive = m.locked && (!hasResult || isMatchLive);
+          var isPast = (m.locked || (hasResult && !isMatchLive)) && !isToday && !isLive;
 
           var cardClass = 'mc';
           if (isPast) cardClass += ' past';
@@ -3979,53 +4259,95 @@
       window.scrollTo(0, scrollPos);
     }
 
-    function saveResult(id) {
-      if (!session || session.type !== 'admin') return;
+    // ─── Helper: validate score inputs and get penalty winner ────────────────────
+    function _getScorePayload(id) {
       var s1 = (document.getElementById('r1-' + id) || {}).value;
       var s2 = (document.getElementById('r2-' + id) || {}).value;
-      if (s1 === '' || s2 === '') { toast('Digite o placar dos dois times', 'err'); return; }
-
-      var btn = document.querySelector('button[onclick="saveResult(\'' + id + '\')"]');
-      var origHtml = btn ? btn.innerHTML : '';
-      if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Salvando...';
-        lucide.createIcons();
-      }
-
+      if (s1 === '' || s2 === '') { toast('Digite o placar dos dois times', 'err'); return null; }
       var m = allMatches.find(function (x) { return String(x.id) === String(id); });
       var penalties_winner = null;
-      if (m && m.round && !m.round.startsWith("Matchday") && parseInt(s1) === parseInt(s2)) {
+      if (m && m.round && !m.round.startsWith('Matchday') && parseInt(s1) === parseInt(s2)) {
         var btn1 = document.getElementById('pen-btn-1-' + id);
         var btn2 = document.getElementById('pen-btn-2-' + id);
         if (btn1 && btn1.classList.contains('active')) {
           penalties_winner = m.team1;
         } else if (btn2 && btn2.classList.contains('active')) {
           penalties_winner = m.team2;
-        } else {
-          toast('Selecione o vencedor nos pênaltis', 'err');
-          if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = origHtml;
-            lucide.createIcons();
-          }
-          return;
         }
+        // For live saves in KO matches we allow no penalty winner yet
       }
+      return { score1: parseInt(s1), score2: parseInt(s2), penalties_winner: penalties_winner };
+    }
 
-      apiFetch('PUT', '/api/matches/' + id + '/result', { score1: parseInt(s1), score2: parseInt(s2), penalties_winner: penalties_winner }, { 'x-admin-pin': session.pin })
+    // ─── Salvar Parcial (AO VIVO) ────────────────────────────────────────────────
+    function saveLiveResult(id) {
+      if (!session || session.type !== 'admin') return;
+      var payload = _getScorePayload(id);
+      if (!payload) return;
+      payload.status = 'live';
+
+      var btn = document.querySelector('button[onclick="saveLiveResult(\'' + id + '\')"]');
+      var origHtml = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Salvando...'; lucide.createIcons(); }
+
+      apiFetch('PUT', '/api/matches/' + id + '/result', payload, { 'x-admin-pin': session.pin })
         .then(function (r) {
-          if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = origHtml;
-            lucide.createIcons();
-          }
+          if (btn) { btn.disabled = false; btn.innerHTML = origHtml; lucide.createIcons(); }
           if (r && r.error) { toast(r.error, 'err'); return; }
-          toast('Resultado salvo');
+          toast('Placar parcial salvo ⚡ (Ao Vivo)');
           loadJogosSilently();
         });
     }
 
+    // ─── Finalizar Partida ────────────────────────────────────────────────────────
+    function saveFinishResult(id) {
+      if (!session || session.type !== 'admin') return;
+      var payload = _getScorePayload(id);
+      if (!payload) return;
+
+      // For KO matches with draw, penalty winner is required to finish
+      var m = allMatches.find(function (x) { return String(x.id) === String(id); });
+      if (m && m.round && !m.round.startsWith('Matchday') && payload.score1 === payload.score2 && !payload.penalties_winner) {
+        toast('Selecione o vencedor nos pênaltis para finalizar', 'err'); return;
+      }
+      payload.status = 'finished';
+
+      var btn = document.querySelector('button[onclick="saveFinishResult(\'' + id + '\')"]');
+      var origHtml = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Finalizando...'; lucide.createIcons(); }
+
+      apiFetch('PUT', '/api/matches/' + id + '/result', payload, { 'x-admin-pin': session.pin })
+        .then(function (r) {
+          if (btn) { btn.disabled = false; btn.innerHTML = origHtml; lucide.createIcons(); }
+          if (r && r.error) { toast(r.error, 'err'); return; }
+          toast('Partida finalizada ✓');
+          loadJogosSilently();
+        });
+    }
+
+    // ─── Reabrir Partida (volta para live) ───────────────────────────────────────
+    function reopenResult(id) {
+      if (!session || session.type !== 'admin') return;
+      // Keep current stored score, just change status back to live
+      var m = allMatches.find(function (x) { return String(x.id) === String(id); });
+      var s1 = (document.getElementById('r1-' + id) || {}).value;
+      var s2 = (document.getElementById('r2-' + id) || {}).value;
+      if (s1 === '' || s2 === '') { toast('Placar não encontrado. Edite e use Salvar Parcial.', 'err'); return; }
+
+      var btn = document.querySelector('button[onclick="reopenResult(\'' + id + '\')"]');
+      var origHtml = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Reabrindo...'; lucide.createIcons(); }
+
+      apiFetch('PUT', '/api/matches/' + id + '/result', { score1: parseInt(s1), score2: parseInt(s2), status: 'live' }, { 'x-admin-pin': session.pin })
+        .then(function (r) {
+          if (btn) { btn.disabled = false; btn.innerHTML = origHtml; lucide.createIcons(); }
+          if (r && r.error) { toast(r.error, 'err'); return; }
+          toast('Partida reaberta como Ao Vivo ⚡');
+          loadJogosSilently();
+        });
+    }
+
+    // ─── Limpar Placar ────────────────────────────────────────────────────────────
     function clearResult(id) {
       if (!session || session.type !== 'admin') return;
 
@@ -4033,7 +4355,7 @@
       var origHtml = btn ? btn.innerHTML : '';
       if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Removendo...';
+        btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Limpando...';
         lucide.createIcons();
       }
 
@@ -4045,7 +4367,7 @@
             lucide.createIcons();
           }
           if (r && r.error) { toast(r.error, 'err'); return; }
-          toast('Resultado removido');
+          toast('Placar removido');
           loadJogosSilently();
         });
     }
@@ -4481,6 +4803,10 @@
           lucide.createIcons();
         }
       });
+
+      // 5. Load banner management list and comm log
+      loadAdminBanners();
+      loadCommLog();
     }
 
     function dicebearUrl(name) {
@@ -6042,6 +6368,176 @@
         document.getElementById('push-url').value = '';
 
         toast('Notificação enviada com sucesso!');
+        loadCommLog();
+      });
+    }
+
+    // ─── Global Banner ────────────────────────────────────────────────────────────
+    function fetchGlobalBanner() {
+      // Admin never sees the banner
+      if (session && session.type === 'admin') return;
+      apiFetch('GET', '/api/banners/active').then(function (banner) {
+        if (!banner || !banner.id) return;
+        var dismissedKey = 'dismissed_banner_' + banner.id;
+        if (localStorage.getItem(dismissedKey)) return;
+        showGlobalBanner(banner);
+      });
+    }
+
+    function showGlobalBanner(banner) {
+      var wrap = document.getElementById('global-banner-wrap');
+      var el = document.getElementById('global-banner');
+      var textEl = document.getElementById('global-banner-text');
+      var iconEl = document.getElementById('global-banner-icon');
+      if (!wrap || !el || !textEl) return;
+      el.className = 'global-banner ' + (banner.type || 'warning');
+      var icons = { warning: 'alert-triangle', success: 'check-circle', danger: 'alert-octagon' };
+      var iconName = icons[banner.type] || 'alert-triangle';
+      if (iconEl) {
+        iconEl.setAttribute('data-lucide', iconName);
+        lucide.createIcons({ nodes: [iconEl] });
+      }
+      textEl.textContent = banner.message;
+      wrap.dataset.bannerId = banner.id;
+      wrap.style.display = 'block';
+    }
+
+    function dismissGlobalBanner() {
+      var wrap = document.getElementById('global-banner-wrap');
+      if (!wrap) return;
+      var bannerId = wrap.dataset.bannerId;
+      if (bannerId) localStorage.setItem('dismissed_banner_' + bannerId, '1');
+      wrap.style.display = 'none';
+    }
+
+    // ─── Admin Banner Management ──────────────────────────────────────────────────
+    function publishBanner() {
+      var msgEl = document.getElementById('banner-message');
+      var typeEl = document.getElementById('banner-type');
+      var message = msgEl ? msgEl.value.trim() : '';
+      var type = typeEl ? typeEl.value : 'warning';
+      if (!message) { toast('Digite a mensagem do banner', 'err'); return; }
+
+      var btn = document.getElementById('btn-publish-banner');
+      var origHtml = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width:14px;height:14px;margin-right:4px;display:inline-block;vertical-align:-2px"></i> Publicando...';
+        lucide.createIcons();
+      }
+
+      apiFetch('POST', '/api/banners', { message: message, type: type }, { 'x-admin-pin': session.pin })
+        .then(function (r) {
+          if (btn) { btn.disabled = false; btn.innerHTML = origHtml; lucide.createIcons(); }
+          if (r && r.error) { toast(r.error, 'err'); return; }
+          if (msgEl) msgEl.value = '';
+          toast('Banner publicado e ativado!');
+          loadAdminBanners();
+          loadCommLog();
+        });
+    }
+
+    function loadAdminBanners() {
+      if (!session || session.type !== 'admin') return;
+      apiFetch('GET', '/api/banners', null, { 'x-admin-pin': session.pin }).then(function (banners) {
+        renderAdminBanners(Array.isArray(banners) ? banners : []);
+      });
+    }
+
+    function renderAdminBanners(banners) {
+      var container = document.getElementById('admin-banners-list');
+      if (!container) return;
+      if (!banners.length) {
+        container.innerHTML = '<div style="font-size:0.8rem;color:var(--muted-foreground);text-align:center;padding:10px;">Nenhum banner criado ainda.</div>';
+        return;
+      }
+      var typeIcons = { warning: '⚠️', success: '✅', danger: '🚨' };
+      var typeColors = { warning: '#fbbf24', success: '#34d399', danger: '#fca5a5' };
+      container.innerHTML = banners.map(function (b) {
+        var icon = typeIcons[b.type] || '⚠️';
+        var color = typeColors[b.type] || '#fbbf24';
+        var d = new Date(b.created_at);
+        var dateStr = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        var activeBadge = b.active
+          ? '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.25);border-radius:4px;padding:2px 7px;font-size:0.7rem;font-weight:600;"><span style="width:5px;height:5px;border-radius:50%;background:#10b981;display:inline-block;"></span>ATIVO</span>'
+          : '<span style="background:var(--muted);color:var(--muted-foreground);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:0.7rem;font-weight:600;">inativo</span>';
+        var actionBtn = b.active
+          ? '<button class="btn-sm" style="border-color:rgba(239,68,68,0.3);color:#ef4444;" onclick="deactivateBanner(\'' + b.id + '\')"><i data-lucide="eye-off" style="width:10px;height:10px"></i> Desativar</button>'
+          : '<button class="btn-sm" style="border-color:rgba(16,185,129,0.3);color:#10b981;" onclick="activateBanner(\'' + b.id + '\')"><i data-lucide="eye" style="width:10px;height:10px"></i> Ativar</button>';
+        return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--secondary);border:1px solid var(--border);border-radius:6px;flex-wrap:wrap;">'
+          + '<span style="font-size:1rem;flex-shrink:0;">' + icon + '</span>'
+          + '<div style="flex:1;min-width:180px;">'
+          + '<div style="font-size:0.82rem;color:' + color + ';font-weight:600;margin-bottom:3px;">' + b.message + '</div>'
+          + '<div style="font-size:0.72rem;color:var(--muted-foreground);">' + dateStr + '</div>'
+          + '</div>'
+          + '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">'
+          + activeBadge + ' ' + actionBtn
+          + ' <button class="btn-del" style="padding:3px 7px;font-size:0.72rem;" onclick="deleteBanner(\'' + b.id + '\')"><i data-lucide="trash-2" style="width:10px;height:10px"></i></button>'
+          + '</div>'
+          + '</div>';
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function activateBanner(id) {
+      apiFetch('PUT', '/api/banners/' + id + '/activate', null, { 'x-admin-pin': session.pin })
+        .then(function (r) {
+          if (r && r.error) { toast(r.error, 'err'); return; }
+          toast('Banner ativado!');
+          loadAdminBanners();
+          loadCommLog();
+        });
+    }
+
+    function deactivateBanner(id) {
+      apiFetch('PUT', '/api/banners/' + id + '/deactivate', null, { 'x-admin-pin': session.pin })
+        .then(function (r) {
+          if (r && r.error) { toast(r.error, 'err'); return; }
+          toast('Banner desativado.');
+          loadAdminBanners();
+        });
+    }
+
+    function deleteBanner(id) {
+      apiFetch('DELETE', '/api/banners/' + id, null, { 'x-admin-pin': session.pin })
+        .then(function (r) {
+          if (r && r.error) { toast(r.error, 'err'); return; }
+          toast('Banner excluído.');
+          loadAdminBanners();
+        });
+    }
+
+    // ─── Comm Log ─────────────────────────────────────────────────────────────────
+    function loadCommLog() {
+      if (!session || session.type !== 'admin') return;
+      apiFetch('GET', '/api/comm-log', null, { 'x-admin-pin': session.pin }).then(function (rows) {
+        var tbody = document.getElementById('comm-log-body');
+        if (!tbody) return;
+        if (!Array.isArray(rows) || rows.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" class="empty" style="text-align:center">Nenhum registro nos últimos 10 dias.</td></tr>';
+          return;
+        }
+        var typeLabel = { push: '🔔 Push', banner: '📢 Banner' };
+        var subIcons = { warning: '⚠️ ', success: '✅ ', danger: '🚨 ' };
+        tbody.innerHTML = rows.map(function (r) {
+          var d = new Date(r.created_at);
+          var dateStr = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+            + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          var typeBadge = '<span class="comm-log-type-badge ' + r.type + '">' + (typeLabel[r.type] || r.type) + '</span>';
+          var subPfx = r.sub_type ? (subIcons[r.sub_type] || '') : '';
+          var detail = '';
+          if (r.type === 'push') {
+            detail = '<span style="color:var(--muted-foreground);font-size:0.78rem;">' + (r.recipient_count || 0) + ' dest.</span>';
+          } else if (r.detail) {
+            detail = '<span style="color:var(--muted-foreground);font-size:0.78rem;">' + r.detail + '</span>';
+          }
+          return '<tr>'
+            + '<td style="white-space:nowrap;color:var(--muted-foreground);">' + dateStr + '</td>'
+            + '<td>' + typeBadge + '</td>'
+            + '<td style="font-size:0.8rem;">' + subPfx + r.message + '</td>'
+            + '<td>' + detail + '</td>'
+            + '</tr>';
+        }).join('');
       });
     }
 
