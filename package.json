@@ -2,7 +2,7 @@
   "name": "bolao-unk",
   "version": "1.0.0",
   "scripts": {
-    "dev": "vercel dev"
+    "dev": "npx vercel dev"
   },
   "dependencies": {
     "cors": "^2.8.5",

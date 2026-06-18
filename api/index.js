@@ -44,6 +44,8 @@ async function initDB() {
     .catch(err => console.log('cotas col:', err.message));
   await pool.query(`ALTER TABLE participants ADD COLUMN IF NOT EXISTS referred_by TEXT;`)
     .catch(err => console.log('referred_by col:', err.message));
+  await pool.query(`ALTER TABLE participants ADD COLUMN IF NOT EXISTS approved BOOLEAN NOT NULL DEFAULT TRUE;`)
+    .catch(err => console.log('approved col:', err.message));
   await pool.query(`ALTER TABLE bets ADD COLUMN IF NOT EXISTS cota_index INTEGER NOT NULL DEFAULT 0;`)
     .catch(err => console.log('cota_index col:', err.message));
   await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS penalties_winner TEXT;`)
@@ -222,8 +224,44 @@ module.exports = async function handler(req, res) {
 
     // GET /participants
     if (url === '/participants' && method === 'GET') {
-      const { rows } = await pool.query('SELECT id, name, phone, cotas, referred_by FROM participants ORDER BY name');
+      const { rows } = await pool.query('SELECT id, name, phone, cotas, referred_by FROM participants WHERE approved = TRUE ORDER BY name');
       return res.status(200).json(rows);
+    }
+
+    // GET /participants/pending
+    if (url === '/participants/pending' && method === 'GET') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+      const { rows } = await pool.query('SELECT id, name, phone, referred_by, approved FROM participants WHERE approved = FALSE ORDER BY name');
+      return res.status(200).json(rows);
+    }
+
+    // POST /participants/request (Public referral request)
+    if (url === '/participants/request' && method === 'POST') {
+      const { name, pin, phone, referred_by } = body;
+      if (!name?.trim()) return res.status(400).json({ error: 'Nome obrigatório' });
+      if (!pin || String(pin).length < 4) return res.status(400).json({ error: 'PIN deve ter pelo menos 4 dígitos' });
+      const exists = await pool.query('SELECT id FROM participants WHERE LOWER(name)=LOWER($1)', [name]);
+      if (exists.rows.length) return res.status(400).json({ error: 'Participante já existe' });
+      const id = uuidv4();
+      const cleanPhone = phone ? String(phone).replace(/\D/g, '') : null;
+      
+      // Inserts with approved=FALSE
+      await pool.query('INSERT INTO participants (id,name,pin,phone,cotas,referred_by,approved) VALUES ($1,$2,$3,$4,1,$5,FALSE)', 
+        [id, name.trim(), String(pin), cleanPhone || null, referred_by || null]);
+      return res.status(200).json({ id, name: name.trim(), referred_by });
+    }
+
+    // PUT /participants/:id/approve
+    const approvePart = url.match(/^\/participants\/([^/]+)\/approve$/);
+    if (approvePart && method === 'PUT') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+      const id = approvePart[1];
+      await pool.query('UPDATE participants SET approved = TRUE WHERE id = $1', [id]);
+      return res.status(200).json({ ok: true });
     }
 
     // POST /participants
@@ -240,7 +278,7 @@ module.exports = async function handler(req, res) {
       const cleanPhone = phone ? String(phone).replace(/\D/g, '') : null;
       let cotasVal = parseInt(cotas !== undefined ? cotas : 1);
       if (isNaN(cotasVal) || cotasVal < 0) cotasVal = 1;
-      await pool.query('INSERT INTO participants (id,name,pin,phone,cotas,referred_by) VALUES ($1,$2,$3,$4,$5,$6)', [id, name.trim(), String(pin), cleanPhone || null, cotasVal, referred_by || null]);
+      await pool.query('INSERT INTO participants (id,name,pin,phone,cotas,referred_by,approved) VALUES ($1,$2,$3,$4,$5,$6,TRUE)', [id, name.trim(), String(pin), cleanPhone || null, cotasVal, referred_by || null]);
       return res.status(200).json({ id, name: name.trim(), cotas: cotasVal, referred_by });
     }
 
@@ -330,8 +368,8 @@ module.exports = async function handler(req, res) {
       
       let pValid = false;
       if (pId && pPin) {
-        const pCheck = await pool.query('SELECT pin FROM participants WHERE id=$1', [pId]);
-        if (pCheck.rows.length && pCheck.rows[0].pin === String(pPin)) {
+        const pCheck = await pool.query('SELECT pin, approved FROM participants WHERE id=$1', [pId]);
+        if (pCheck.rows.length && pCheck.rows[0].pin === String(pPin) && pCheck.rows[0].approved !== false) {
           pValid = true;
         }
       }
@@ -363,8 +401,9 @@ module.exports = async function handler(req, res) {
     if (url === '/bets' && method === 'POST') {
       const { participantId, matchId, score1, score2, cotaIndex } = body;
       const pin = req.headers['x-participant-pin'];
-      const p = await pool.query('SELECT pin, cotas FROM participants WHERE id=$1', [participantId]);
+      const p = await pool.query('SELECT pin, cotas, approved FROM participants WHERE id=$1', [participantId]);
       if (!p.rows.length) return res.status(404).json({ error: 'Participante não encontrado' });
+      if (p.rows[0].approved === false) return res.status(403).json({ error: 'Sua conta ainda não foi aprovada pelo administrador' });
       if (p.rows[0].pin !== String(pin)) return res.status(401).json({ error: 'PIN incorreto' });
 
       const maxCotas = p.rows[0].cotas;
@@ -390,7 +429,7 @@ module.exports = async function handler(req, res) {
 
     // GET /ranking
     if (url === '/ranking' && method === 'GET') {
-      const parts   = await pool.query('SELECT id, name, cotas FROM participants ORDER BY name');
+      const parts   = await pool.query('SELECT id, name, cotas FROM participants WHERE approved=TRUE ORDER BY name');
       const bets    = await pool.query('SELECT participant_id, match_id, score1, score2 FROM bets');
       const results = await pool.query('SELECT match_id, score1, score2 FROM results');
       const resMap  = {};
@@ -417,8 +456,9 @@ module.exports = async function handler(req, res) {
     // POST /auth/participant
     if (url === '/auth/participant' && method === 'POST') {
       const { participantId, pin } = body;
-      const r = await pool.query('SELECT id, name, pin, cotas FROM participants WHERE id=$1', [participantId]);
+      const r = await pool.query('SELECT id, name, pin, cotas, approved FROM participants WHERE id=$1', [participantId]);
       if (!r.rows.length) return res.status(404).json({ error: 'Participante não encontrado' });
+      if (r.rows[0].approved === false) return res.status(403).json({ error: 'Sua conta ainda não foi aprovada pelo administrador' });
       if (r.rows[0].pin !== String(pin)) return res.status(401).json({ error: 'PIN incorreto' });
       return res.status(200).json({ ok: true, id: r.rows[0].id, name: r.rows[0].name, cotas: r.rows[0].cotas });
     }
@@ -444,7 +484,7 @@ module.exports = async function handler(req, res) {
 
     // GET /config/arrecadado (Dynamically calculated based on user cotas sum * valor_cota)
     if (url === '/config/arrecadado' && method === 'GET') {
-      const sumRes = await pool.query('SELECT SUM(cotas) as total_cotas FROM participants');
+      const sumRes = await pool.query('SELECT SUM(cotas) as total_cotas FROM participants WHERE approved = TRUE');
       const totalCotas = parseInt(sumRes.rows[0]?.total_cotas || 0);
 
       const cotaRes = await pool.query(`SELECT value FROM config WHERE key = 'valor_cota'`);

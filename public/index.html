@@ -1041,6 +1041,72 @@
       min-height: 20px;
     }
 
+    .lockout-banner {
+      display: none;
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-top: 12px;
+      text-align: center;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .lockout-banner.visible {
+      display: block;
+    }
+
+    .lockout-icon {
+      font-size: 1.6rem;
+      margin-bottom: 6px;
+    }
+
+    .lockout-title {
+      font-family: 'Oswald', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--red);
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .lockout-msg {
+      font-size: 0.8rem;
+      color: var(--muted-foreground);
+      margin-bottom: 8px;
+    }
+
+    .lockout-timer {
+      font-family: 'Oswald', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--foreground);
+      letter-spacing: 2px;
+    }
+
+    .attempts-warn {
+      display: none;
+      background: rgba(251, 191, 36, 0.08);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: #fbbf24;
+      text-align: center;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .attempts-warn.visible {
+      display: block;
+    }
+
+    .pind.locked {
+      opacity: 0.35;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
     .mbtns {
       display: flex;
       gap: 10px;
@@ -2437,6 +2503,27 @@
           <option value="Todos">Todos</option>
         </select>
       </div>
+      
+      <!-- Referral Card on page-apostas -->
+      <div class="card" id="participant-referral-card" style="margin-bottom: 20px; background: rgba(201, 168, 76, 0.02); border-color: rgba(201, 168, 76, 0.2);">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <div style="font-family: 'Oswald', sans-serif; font-size: 1.1rem; color: var(--gold); display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="gift" style="width: 18px; height: 18px;"></i> Indique e Ganhe!
+            </div>
+            <div style="font-size: 0.8rem; color: var(--muted-foreground); margin-top: 2px;">
+              Copie seu link de indicação e envie para seus amigos. Você ganha bônus por cada indicação ativa!
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center; width: 100%; max-width: 480px;">
+            <input class="inp" id="share-ref-link-apostas" readonly style="flex: 1; font-size: 0.8rem; padding: 8px 12px; background: #09090b;" onclick="this.select()">
+            <button class="btn-add" onclick="copyReferralLink('share-ref-link-apostas')" style="padding: 8px 16px; background: var(--gold); border-color: var(--gold); color: #000; font-weight: 600; display:flex; align-items:center; gap:4px; justify-content:center;">
+              <i data-lucide="copy" style="width: 14px; height: 14px;"></i> Copiar
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div id="apostas-list">
         <div class="arow" style="align-items: center;">
           <div class="ateam-l" style="justify-content:flex-end;">
@@ -2522,6 +2609,18 @@
       <div class="ptitle"><i data-lucide="settings"
           style="width: 20px; height: 20px; margin-right: 10px; display: inline-block; vertical-align: -3px; color: var(--primary)"></i>Administração
       </div>
+      
+      <!-- CARD DE SOLICITAÇÕES PENDENTES -->
+      <div class="card" id="admin-pending-card" style="display:none; border-color:var(--primary); background:rgba(230,57,70,0.02); margin-bottom: 24px;">
+        <div class="sub-title" style="color:var(--primary-hover); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(230,57,70,0.15); padding-bottom:8px; margin-bottom:14px;">
+          <span style="display:flex; align-items:center; gap:6px;"><i data-lucide="clock" style="width:14px;height:14px;"></i> Solicitações Pendentes (Aprovação de Pix)</span>
+          <span class="badge-admin" style="background:rgba(230,57,70,0.1); color:var(--primary-hover); border-color:rgba(230,57,70,0.2);" id="admin-pending-count">0 pendentes</span>
+        </div>
+        <div id="admin-pending-list" style="display:flex; flex-direction:column; gap:8px;">
+          <!-- Pendings rendered here -->
+        </div>
+      </div>
+
       <div class="card">
         <div class="sub-title">Adicionar Participante</div>
         <div class="form-row">
@@ -2768,9 +2867,16 @@
         </div>
       </div>
       <div class="merr" id="merr"></div>
+      <div class="attempts-warn" id="attempts-warn"></div>
+      <div class="lockout-banner" id="lockout-banner">
+        <div class="lockout-icon">🔒</div>
+        <div class="lockout-title">Acesso Bloqueado</div>
+        <div class="lockout-msg">Muitas tentativas incorretas. Tente novamente em:</div>
+        <div class="lockout-timer" id="lockout-timer">00:00</div>
+      </div>
       <div class="mbtns">
         <button class="mbtn secondary" onclick="closeLogin()">Cancelar</button>
-        <button class="mbtn primary" onclick="doLogin()">Entrar</button>
+        <button class="mbtn primary" id="btn-entrar" onclick="doLogin()">Entrar</button>
       </div>
     </div>
   </div>
@@ -2848,6 +2954,16 @@
       <div class="modal-sub" style="margin-bottom:12px;">Veja quem você indicou e quanto acumulou em bônus.</div>
       <div id="my-ref-rank" style="font-size:0.85rem; color:var(--gold); margin-bottom:16px; font-weight:600; text-align:center; background:rgba(201,168,76,0.08); border:1px solid rgba(201,168,76,0.2); border-radius:6px; padding:6px 12px;"></div>
       
+      <div style="background:#18181b; border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:16px;">
+        <label style="display:block; font-size:0.7rem; color:var(--muted-foreground); margin-bottom:6px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Seu Link de Indicação:</label>
+        <div style="display:flex; gap:8px;">
+          <input class="inp" id="share-ref-link-modal" readonly style="flex:1; font-size:0.75rem; padding:6px 10px; background:#09090b; height:32px;" onclick="this.select()">
+          <button class="mbtn primary" onclick="copyReferralLink('share-ref-link-modal')" style="flex:none; width:auto; padding:0 12px; height:32px; font-size:0.75rem; margin:0; display:flex; align-items:center; gap:4px; justify-content:center;">
+            <i data-lucide="copy" style="width:12px;height:12px;"></i> Copiar
+          </button>
+        </div>
+      </div>
+      
       <div style="background:#18181b; border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:20px; display:flex; flex-direction:column; gap:12px;">
         <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.9rem;">
           <span style="color:var(--muted-foreground);">Suas indicações:</span>
@@ -2874,6 +2990,75 @@
       
       <div class="mbtns">
         <button class="mbtn secondary" onclick="closeMyReferralsModal()" style="width:100%;">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- REFERRAL SIGNUP MODAL -->
+  <div class="overlay hide" id="referral-signup-overlay">
+    <div class="modal" style="max-width:400px;">
+      <h2 style="display:flex; align-items:center; gap:8px;">
+        <i data-lucide="user-plus" style="width:20px; height:20px; color:var(--primary)"></i> Solicitar Participação
+      </h2>
+      <div class="modal-sub" id="ref-signup-subtitle">Você foi indicado para participar do Bolão!</div>
+      
+        <div id="ref-signup-form-body">
+          <div class="mfield">
+            <label>Nome de Usuário</label>
+            <input class="inp" id="ref-signup-name" placeholder="Ex: xico123" style="width:100%">
+          </div>
+        <div class="mfield">
+          <label>WhatsApp (Telefone)</label>
+          <input class="inp" id="ref-signup-phone" placeholder="(00) 00000-0000" style="width:100%" maxlength="15" inputmode="tel" oninput="applyPhoneMask(this)">
+        </div>
+        <div class="mfield">
+          <label>Criar PIN (4 dígitos numéricos)</label>
+          <div class="pin-row" style="margin: 10px 0;">
+            <input class="pind" type="password" maxlength="1" inputmode="numeric" id="rp0" oninput="rpnext(0)">
+            <input class="pind" type="password" maxlength="1" inputmode="numeric" id="rp1" oninput="rpnext(1)">
+            <input class="pind" type="password" maxlength="1" inputmode="numeric" id="rp2" oninput="rpnext(2)">
+            <input class="pind" type="password" maxlength="1" inputmode="numeric" id="rp3" oninput="rpnext(3)">
+          </div>
+          <div style="font-size:0.7rem; color:var(--muted-foreground); text-align:center; margin-top:-6px;">Esse PIN será usado para você fazer login no sistema futuramente.</div>
+        </div>
+        
+        <div class="merr" id="ref-signup-err"></div>
+        
+        <div class="mbtns" style="margin-top:16px;">
+          <button class="mbtn secondary" onclick="closeReferralSignup()">Cancelar</button>
+          <button class="mbtn primary" id="btn-submit-ref-signup" onclick="submitReferralSignup()">Enviar Solicitação</button>
+        </div>
+      </div>
+      
+      <!-- Referral Success / PIX screen -->
+      <div id="ref-signup-success-body" style="display:none; text-align:center;">
+        <div style="font-size:3rem; margin-bottom:12px;">🎉</div>
+        <div style="font-family:'Oswald', sans-serif; font-size:1.2rem; color:#10b981; margin-bottom:8px;">Solicitação Enviada!</div>
+        <div style="font-size:0.85rem; color:var(--muted-foreground); margin-bottom:20px; line-height:1.4;">
+          Sua solicitação sob o nome <strong id="ref-success-name" style="color:var(--foreground)"></strong> foi enviada ao administrador do bolão e está pendente de aprovação.
+        </div>
+        
+        <div style="background:#09090b; border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:20px; text-align:left;">
+          <div style="font-size:0.8rem; font-weight:600; color:var(--gold); text-transform:uppercase; margin-bottom:8px; letter-spacing:0.5px; display:flex; align-items:center; gap:4px;">
+            <i data-lucide="qr-code" style="width:14px;height:14px;"></i> Instruções de Pagamento (PIX)
+          </div>
+          <div style="font-size:0.85rem; line-height:1.4; color:var(--foreground);">
+            Para ativar seu acesso, faça o PIX do valor da cota:
+            <ul style="margin: 8px 0 8px 16px; padding:0; display:flex; flex-direction:column; gap:4px;">
+              <li>Valor: <strong style="color:var(--gold)">R$ 25,00</strong></li>
+              <li>Chave PIX: <strong style="color:var(--gold)">85998091910</strong> (Celular)</li>
+              <li>Beneficiário: <strong style="color:var(--gold)">UNK / Admin</strong></li>
+            </ul>
+            Após pagar, clique no botão abaixo para enviar o comprovante via WhatsApp diretamente ao administrador para aprovação imediata.
+          </div>
+        </div>
+        
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <a id="ref-whatsapp-btn" href="#" target="_blank" rel="noopener noreferrer" class="mbtn primary" style="background:#25d366; color:#fff; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:6px;">
+            <i data-lucide="message-circle" style="width:16px;height:16px;"></i> Enviar Comprovante no WhatsApp
+          </a>
+          <button class="mbtn secondary" onclick="closeReferralSignup()">Fechar</button>
+        </div>
       </div>
     </div>
   </div>
@@ -3157,12 +3342,23 @@
         sel.innerHTML = list.length
           ? list.map(function (p) { return '<option value="' + p.id + '">' + p.name + '</option>'; }).join('')
           : '<option value="">Nenhum participante cadastrado</option>';
+        sel.onchange = function() { updateLockoutUI(); };
         clearPin();
         document.getElementById('merr').textContent = '';
+        document.getElementById('attempts-warn').classList.remove('visible');
+        document.getElementById('lockout-banner').classList.remove('visible');
         document.getElementById('login-type').value = 'participant';
         onTypeChange();
         document.getElementById('overlay').className = 'overlay';
-        setTimeout(function () { document.getElementById('p0').focus(); }, 80);
+        setTimeout(function () {
+          updateLockoutUI();
+          var state = getLockoutState(getLockoutKey());
+          if (state.lockedUntil && Date.now() < state.lockedUntil) {
+            startLockoutCountdown();
+          } else {
+            document.getElementById('p0').focus();
+          }
+        }, 80);
       });
     }
 
@@ -3174,6 +3370,17 @@
       var t = document.getElementById('login-type').value;
       document.getElementById('pfield').style.display = t === 'participant' ? '' : 'none';
       clearPin();
+      document.getElementById('merr').textContent = '';
+      // Re-check lockout for new context
+      setTimeout(function() {
+        if (typeof updateLockoutUI === 'function') {
+          updateLockoutUI();
+          var state = getLockoutState(getLockoutKey());
+          if (state.lockedUntil && Date.now() < state.lockedUntil) {
+            startLockoutCountdown();
+          }
+        }
+      }, 0);
     }
 
     function pnext(i) {
@@ -3684,6 +3891,10 @@
         apostasFilter = 'Todos';
         renderApostasFilters();
         renderApostas();
+        var shareApostas = document.getElementById('share-ref-link-apostas');
+        if (shareApostas) {
+          shareApostas.value = window.location.origin + '?ref=' + session.id;
+        }
       });
     }
 
@@ -3937,10 +4148,16 @@
     function loadAdmin() {
       if (!session || session.type !== 'admin') return;
 
-      // 1. Load participants list
-      apiFetch('GET', '/api/participants').then(function (list) {
-        allParticipants = Array.isArray(list) ? list : [];
+      // 1. Load approved participants and pending referrals list
+      Promise.all([
+        apiFetch('GET', '/api/participants'),
+        apiFetch('GET', '/api/participants/pending', null, { 'x-admin-pin': session.pin })
+      ]).then(function(results) {
+        allParticipants = Array.isArray(results[0]) ? results[0] : [];
         renderParticipantsList();
+        
+        var pendingList = Array.isArray(results[1]) ? results[1] : [];
+        renderPendingList(pendingList);
       });
 
       // 2. Load valor da cota
@@ -4740,6 +4957,140 @@
       toast('Sessão encerrada');
     }
 
+    // ─── Lockout System ───────────────────────────────────────────────────────────
+    var _lockoutInterval = null;
+
+    // Returns lockout storage key for the current login context
+    function getLockoutKey() {
+      var type = document.getElementById('login-type').value;
+      if (type === 'admin') return 'lockout_admin';
+      var pid = document.getElementById('login-psel').value;
+      return 'lockout_participant_' + (pid || 'unknown');
+    }
+
+    // Returns lockout state object: { attempts, lockedUntil }
+    function getLockoutState(key) {
+      try {
+        var raw = localStorage.getItem(key);
+        if (raw) return JSON.parse(raw);
+      } catch (e) {}
+      return { attempts: 0, lockedUntil: 0 };
+    }
+
+    function saveLockoutState(key, state) {
+      try { localStorage.setItem(key, JSON.stringify(state)); } catch (e) {}
+    }
+
+    function clearLockoutState(key) {
+      try { localStorage.removeItem(key); } catch (e) {}
+    }
+
+    // Calculate lockout duration in ms for a given attempt count (>= 3)
+    // 3 errors = 5min, 4 = 15min, 5 = 45min, 6 = 135min, ...
+    function getLockoutDuration(attempts) {
+      if (attempts < 3) return 0;
+      var extra = attempts - 3; // 0, 1, 2, ...
+      return 5 * 60 * 1000 * Math.pow(3, extra);
+    }
+
+    function formatCountdown(ms) {
+      if (ms <= 0) return '00:00';
+      var totalSec = Math.ceil(ms / 1000);
+      var min = Math.floor(totalSec / 60);
+      var sec = totalSec % 60;
+      if (min >= 60) {
+        var h = Math.floor(min / 60);
+        var m = min % 60;
+        return h + 'h ' + (m < 10 ? '0' + m : m) + 'min';
+      }
+      return (min < 10 ? '0' + min : min) + ':' + (sec < 10 ? '0' + sec : sec);
+    }
+
+    function updateLockoutUI() {
+      var key = getLockoutKey();
+      var state = getLockoutState(key);
+      var now = Date.now();
+      var banner = document.getElementById('lockout-banner');
+      var timerEl = document.getElementById('lockout-timer');
+      var warnEl = document.getElementById('attempts-warn');
+      var btnE = document.getElementById('btn-entrar');
+      var pinEls = [0,1,2,3].map(function(i){ return document.getElementById('p'+i); });
+
+      if (state.lockedUntil && now < state.lockedUntil) {
+        // Show locked state
+        banner.classList.add('visible');
+        warnEl.classList.remove('visible');
+        if (btnE) { btnE.disabled = true; btnE.style.opacity = '0.4'; }
+        pinEls.forEach(function(el){ if(el) el.classList.add('locked'); });
+        var remaining = state.lockedUntil - now;
+        if (timerEl) timerEl.textContent = formatCountdown(remaining);
+      } else {
+        // Not locked
+        banner.classList.remove('visible');
+        if (btnE) { btnE.disabled = false; btnE.style.opacity = ''; }
+        pinEls.forEach(function(el){ if(el) el.classList.remove('locked'); });
+
+        // Show attempts warning if >= 1 error
+        if (state.attempts > 0 && state.attempts < 3) {
+          var remaining_att = 3 - state.attempts;
+          warnEl.textContent = '⚠️ Você tem mais ' + remaining_att + ' tentativa' + (remaining_att > 1 ? 's' : '') + ' antes de bloquear.';
+          warnEl.classList.add('visible');
+        } else if (state.attempts >= 3) {
+          // They were locked but it expired — reset UI
+          warnEl.classList.remove('visible');
+        } else {
+          warnEl.classList.remove('visible');
+        }
+      }
+    }
+
+    function startLockoutCountdown() {
+      if (_lockoutInterval) clearInterval(_lockoutInterval);
+      _lockoutInterval = setInterval(function() {
+        var key = getLockoutKey();
+        var state = getLockoutState(key);
+        var now = Date.now();
+        if (!state.lockedUntil || now >= state.lockedUntil) {
+          // Lockout expired — reset and unblock
+          clearLockoutState(key);
+          clearInterval(_lockoutInterval);
+          _lockoutInterval = null;
+          updateLockoutUI();
+          document.getElementById('merr').textContent = '';
+          clearPin();
+          setTimeout(function() { document.getElementById('p0').focus(); }, 50);
+          return;
+        }
+        var timerEl = document.getElementById('lockout-timer');
+        if (timerEl) timerEl.textContent = formatCountdown(state.lockedUntil - now);
+      }, 500);
+    }
+
+    function onLoginError(key, state) {
+      state.attempts = (state.attempts || 0) + 1;
+      var duration = getLockoutDuration(state.attempts);
+      if (duration > 0) {
+        state.lockedUntil = Date.now() + duration;
+        saveLockoutState(key, state);
+        updateLockoutUI();
+        startLockoutCountdown();
+      } else {
+        state.lockedUntil = 0;
+        saveLockoutState(key, state);
+        updateLockoutUI();
+      }
+    }
+
+    function checkLocked(key) {
+      var state = getLockoutState(key);
+      var now = Date.now();
+      if (state.lockedUntil && now < state.lockedUntil) return true;
+      if (state.lockedUntil && now >= state.lockedUntil) {
+        clearLockoutState(key);
+      }
+      return false;
+    }
+
     var _origDoLogin = doLogin;
     function doLogin() {
       var type = document.getElementById('login-type').value;
@@ -4748,9 +5099,31 @@
       err.textContent = '';
       if (pin.length < 4) { err.textContent = 'Digite os 4 dígitos do PIN.'; return; }
 
+      var lockKey = getLockoutKey();
+      if (checkLocked(lockKey)) {
+        updateLockoutUI();
+        return;
+      }
+
       if (type === 'admin') {
         apiFetch('POST', '/api/auth/admin', { pin: pin }).then(function (r) {
-          if (r.error) { err.textContent = r.error; clearPin(); return; }
+          if (r.error) {
+            clearPin();
+            onLoginError(lockKey, getLockoutState(lockKey));
+            var state = getLockoutState(lockKey);
+            if (state.lockedUntil && Date.now() < state.lockedUntil) {
+              err.textContent = '';
+            } else {
+              var rem = 3 - state.attempts;
+              if (rem > 0) {
+                err.textContent = r.error;
+              } else {
+                err.textContent = '';
+              }
+            }
+            return;
+          }
+          clearLockoutState(lockKey);
           session = { type: 'admin', pin: pin };
           saveSession();
           closeLogin(); updateHeader();
@@ -4760,7 +5133,23 @@
       } else {
         var pid = document.getElementById('login-psel').value;
         apiFetch('POST', '/api/auth/participant', { participantId: pid, pin: pin }).then(function (r) {
-          if (r.error) { err.textContent = r.error; clearPin(); return; }
+          if (r.error) {
+            clearPin();
+            onLoginError(lockKey, getLockoutState(lockKey));
+            var state = getLockoutState(lockKey);
+            if (state.lockedUntil && Date.now() < state.lockedUntil) {
+              err.textContent = '';
+            } else {
+              var rem = 3 - state.attempts;
+              if (rem > 0) {
+                err.textContent = r.error;
+              } else {
+                err.textContent = '';
+              }
+            }
+            return;
+          }
+          clearLockoutState(lockKey);
           session = { type: 'participant', id: r.id, name: r.name, pin: pin };
           saveSession();
           closeLogin(); updateHeader();
@@ -4817,6 +5206,13 @@
       if (session) {
         if (session.type === 'participant') go('apostas');
         else if (session.type === 'admin') go('admin');
+      }
+
+      // Check referral query param on startup
+      var urlParams = new URLSearchParams(window.location.search);
+      var refId = urlParams.get('ref');
+      if (refId) {
+        openReferralSignup(refId);
       }
     });
 
@@ -5035,6 +5431,10 @@
         }
       }
       
+      var shareModal = document.getElementById('share-ref-link-modal');
+      if (shareModal) {
+        shareModal.value = window.location.origin + '?ref=' + session.id;
+      }
       document.getElementById('my-referrals-overlay').classList.remove('hide');
     }
     
@@ -5049,6 +5449,194 @@
     document.getElementById('my-referrals-overlay').addEventListener('click', function (e) {
       if (e.target === e.currentTarget) closeMyReferralsModal();
     });
+
+    [0, 1, 2, 3].forEach(function (i) {
+      document.getElementById('p' + i).addEventListener('keydown', function (e) {
+        if (e.key === 'Backspace' && !this.value && i > 0) document.getElementById('p' + (i - 1)).focus();
+        if (e.key === 'Enter') doLogin();
+      });
+    });
+
+    [0, 1, 2, 3].forEach(function (i) {
+      document.getElementById('rp' + i).addEventListener('keydown', function (e) {
+        if (e.key === 'Backspace' && !this.value && i > 0) document.getElementById('rp' + (i - 1)).focus();
+        if (e.key === 'Enter') submitReferralSignup();
+      });
+    });
+
+    // ─── Referral Signup System ───────────────────────────────────────────────────
+    function rpnext(i) {
+      if (document.getElementById('rp' + i).value && i < 3)
+        document.getElementById('rp' + (i + 1)).focus();
+    }
+    function getRefPin() {
+      return [0, 1, 2, 3].map(function (i) { return document.getElementById('rp' + i).value; }).join('');
+    }
+    function clearRefPin() {
+      [0, 1, 2, 3].forEach(function (i) { document.getElementById('rp' + i).value = ''; });
+    }
+    
+    var currentReferrerId = null;
+    function openReferralSignup(referrerId) {
+      currentReferrerId = referrerId;
+      // Fetch referrer name to show personalized title
+      apiFetch('GET', '/api/participants').then(function (list) {
+        var referrerName = 'Alguém';
+        if (Array.isArray(list)) {
+          var referrer = list.find(function(p) { return p.id === referrerId; });
+          if (referrer) referrerName = referrer.name;
+        }
+        var subEl = document.getElementById('ref-signup-subtitle');
+        if (subEl) {
+          subEl.innerHTML = 'Você foi indicado por <strong>' + referrerName + '</strong> para participar do Bolão UNK!';
+        }
+      });
+      
+      // Reset form
+      document.getElementById('ref-signup-name').value = '';
+      document.getElementById('ref-signup-phone').value = '';
+      clearRefPin();
+      document.getElementById('ref-signup-err').textContent = '';
+      document.getElementById('ref-signup-form-body').style.display = '';
+      document.getElementById('ref-signup-success-body').style.display = 'none';
+      
+      document.getElementById('referral-signup-overlay').classList.remove('hide');
+      setTimeout(function() { document.getElementById('ref-signup-name').focus(); }, 100);
+    }
+    
+    function closeReferralSignup() {
+      // Clear referral query parameter from URL
+      try {
+        var url = new URL(window.location.href);
+        url.searchParams.delete('ref');
+        window.history.replaceState({}, document.title, url.pathname + url.search);
+      } catch(e) {}
+      document.getElementById('referral-signup-overlay').classList.add('hide');
+    }
+    
+    function submitReferralSignup() {
+      var name = document.getElementById('ref-signup-name').value.trim();
+      var phone = document.getElementById('ref-signup-phone').value.trim();
+      var pin = getRefPin();
+      var errEl = document.getElementById('ref-signup-err');
+      errEl.textContent = '';
+      
+      if (!name) { errEl.textContent = 'Por favor, informe seu nome de usuário.'; return; }
+      if (phone.replace(/\D/g, '').length < 10) { errEl.textContent = 'Por favor, informe um WhatsApp válido.'; return; }
+      if (pin.length < 4) { errEl.textContent = 'Por favor, digite os 4 dígitos do seu PIN.'; return; }
+      
+      var btn = document.getElementById('btn-submit-ref-signup');
+      var origHtml = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width:14px;height:14px;margin-right:4px;"></i>Enviando...';
+        lucide.createIcons();
+      }
+      
+      apiFetch('POST', '/api/participants/request', {
+        name: name,
+        phone: phone,
+        pin: pin,
+        referred_by: currentReferrerId
+      }).then(function(r) {
+        if (btn) { btn.disabled = false; btn.innerHTML = origHtml; lucide.createIcons(); }
+        if (r.error) { errEl.textContent = r.error; return; }
+        
+        // Success screen
+        document.getElementById('ref-success-name').textContent = name;
+        document.getElementById('ref-signup-form-body').style.display = 'none';
+        
+        // Format whatsapp link
+        var waMsg = 'Olá! Acabei de solicitar participação no Bolão UNK sob o nome "' + name + '". Segue o comprovante do PIX.';
+        var waUrl = 'https://wa.me/5585998091910?text=' + encodeURIComponent(waMsg);
+        document.getElementById('ref-whatsapp-btn').href = waUrl;
+        
+        document.getElementById('ref-signup-success-body').style.display = '';
+        lucide.createIcons();
+      });
+    }
+    
+    function copyReferralLink(inputId) {
+      var input = document.getElementById(inputId);
+      if (!input) return;
+      input.select();
+      input.setSelectionRange(0, 99999); // For mobile
+      try {
+        navigator.clipboard.writeText(input.value).then(function() {
+          toast('Link copiado para a área de transferência!');
+        });
+      } catch(e) {
+        document.execCommand('copy');
+        toast('Link copiado!');
+      }
+    }
+    
+    // ─── Admin Pending Approvals ──────────────────────────────────────────────────
+    function renderPendingList(list) {
+      var card = document.getElementById('admin-pending-card');
+      var el = document.getElementById('admin-pending-list');
+      var countEl = document.getElementById('admin-pending-count');
+      if (!card || !el) return;
+      
+      if (!list || list.length === 0) {
+        card.style.display = 'none';
+        return;
+      }
+      
+      card.style.display = 'block';
+      countEl.textContent = list.length + (list.length === 1 ? ' pendente' : ' pendentes');
+      
+      el.innerHTML = list.map(function(p) {
+        var referrerText = 'Ninguém';
+        if (p.referred_by) {
+          var referrer = allParticipants.find(function(x) { return x.id === p.referred_by; });
+          if (referrer) {
+            referrerText = '<strong>' + referrer.name + '</strong>';
+          }
+        }
+        
+        var waBtn = '';
+        if (p.phone) {
+          var waNum = '55' + p.phone.replace(/\D/g, '');
+          var waUrl = 'https://wa.me/' + waNum + '?text=' + encodeURIComponent('Olá ' + p.name.split(' ')[0] + '! Aqui é o admin do Bolão UNK. Recebi sua solicitação de participação.');
+          waBtn = '<a href="' + waUrl + '" target="_blank" rel="noopener" class="btn-icon btn-wa" title="WhatsApp: ' + formatPhone(p.phone) + '" style="margin-left: 6px;"><i data-lucide="message-circle" style="width:14px;height:14px;"></i></a>';
+        }
+        
+        return '<div class="pcard" style="border-color:rgba(230,57,70,0.25); background:rgba(230,57,70,0.02); display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); padding:10px 14px;">'
+          + '<img class="pavatar" src="' + dicebearUrl(p.name) + '" alt="">'
+          + '<div style="flex:1; min-width:0;">'
+          + '<span class="pname">' + p.name + '</span>'
+          + (p.phone ? '<div style="font-size:0.7rem; color:var(--muted-foreground); margin-top:1px;">' + formatPhone(p.phone) + '</div>' : '')
+          + '<div style="font-size:0.7rem; color:var(--muted-foreground); margin-top:1px;">Indicado por: ' + referrerText + '</div>'
+          + '</div>'
+          + '<div style="display:flex; gap:8px; align-items:center;">'
+          + waBtn
+          + '<button class="btn-save" onclick="approveParticipantRequest(\'' + p.id + '\', \'' + p.name.replace(/'/g, "\\'") + '\')" style="background:#10b981; border-color:#34d399; font-size:0.75rem; padding:4px 10px; display:flex; align-items:center; gap:4px; margin:0;"><i data-lucide="check" style="width:12px;height:12px;"></i> Aprovar</button>'
+          + '<button class="btn-sm" onclick="rejectParticipantRequest(\'' + p.id + '\', \'' + p.name.replace(/'/g, "\\'") + '\')" style="border-color:var(--red); color:var(--red); font-size:0.75rem; padding:4px 10px; display:flex; align-items:center; gap:4px; margin:0;"><i data-lucide="x" style="width:12px;height:12px;"></i> Recusar</button>'
+          + '</div>'
+          + '</div>';
+      }).join('');
+      lucide.createIcons();
+    }
+    
+    function approveParticipantRequest(id, name) {
+      if (!confirm('Deseja aprovar a solicitação de "' + name + '" e liberar o acesso?')) return;
+      apiFetch('PUT', '/api/participants/' + id + '/approve', null, { 'x-admin-pin': session.pin }).then(function(r) {
+        if (r.error) { toast(r.error, 'err'); return; }
+        toast('Participante "' + name + '" aprovado com sucesso!');
+        loadAdmin();
+      });
+    }
+    
+    // We already have a DELETE endpoint in backend that rejects/removes a participant completely.
+    function rejectParticipantRequest(id, name) {
+      if (!confirm('Deseja rejeitar e excluir a solicitação de "' + name + '"?')) return;
+      apiFetch('DELETE', '/api/participants/' + id, null, { 'x-admin-pin': session.pin }).then(function(r) {
+        if (r.error) { toast(r.error, 'err'); return; }
+        toast('Solicitação de "' + name + '" recusada.');
+        loadAdmin();
+      });
+    }
 
     [0, 1, 2, 3].forEach(function (i) {
       document.getElementById('p' + i).addEventListener('keydown', function (e) {
