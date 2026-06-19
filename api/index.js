@@ -27,94 +27,167 @@ const pool = new Pool({
 });
 
 
-async function initDB() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS config (
-      key TEXT PRIMARY KEY, value TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS participants (
-      id TEXT PRIMARY KEY, name TEXT NOT NULL, pin TEXT NOT NULL,
-      phone TEXT, cotas INTEGER NOT NULL DEFAULT 1, referred_by TEXT
-    );
-    CREATE TABLE IF NOT EXISTS bets (
-      id TEXT PRIMARY KEY,
-      participant_id TEXT NOT NULL,
-      match_id TEXT NOT NULL,
-      score1 INTEGER, score2 INTEGER,
-      cota_index INTEGER NOT NULL DEFAULT 0,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(participant_id, match_id, cota_index)
-    );
-    CREATE TABLE IF NOT EXISTS results (
-      match_id TEXT PRIMARY KEY, score1 INTEGER, score2 INTEGER, status TEXT DEFAULT 'finished'
-    );
-    CREATE TABLE IF NOT EXISTS push_subscriptions (
-      id TEXT PRIMARY KEY,
-      participant_id TEXT,
-      endpoint TEXT UNIQUE NOT NULL,
-      keys_auth TEXT NOT NULL,
-      keys_p256dh TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE TABLE IF NOT EXISTS banners (
-      id TEXT PRIMARY KEY,
-      message TEXT NOT NULL,
-      type TEXT NOT NULL DEFAULT 'warning',
-      active BOOLEAN NOT NULL DEFAULT FALSE,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE TABLE IF NOT EXISTS comm_log (
-      id TEXT PRIMARY KEY,
-      type TEXT NOT NULL,
-      sub_type TEXT,
-      message TEXT NOT NULL,
-      detail TEXT,
-      recipient_count INTEGER,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-  // Ensure columns exist for older deployments
-  await pool.query(`ALTER TABLE bets ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;`)
-    .catch(err => console.log('created_at col:', err.message));
-  await pool.query(`ALTER TABLE participants ADD COLUMN IF NOT EXISTS phone TEXT;`)
-    .catch(err => console.log('phone col:', err.message));
-  await pool.query(`ALTER TABLE participants ADD COLUMN IF NOT EXISTS cotas INTEGER NOT NULL DEFAULT 1;`)
-    .catch(err => console.log('cotas col:', err.message));
-  await pool.query(`ALTER TABLE participants ADD COLUMN IF NOT EXISTS referred_by TEXT;`)
-    .catch(err => console.log('referred_by col:', err.message));
-  await pool.query(`ALTER TABLE participants ADD COLUMN IF NOT EXISTS approved BOOLEAN NOT NULL DEFAULT TRUE;`)
-    .catch(err => console.log('approved col:', err.message));
-  await pool.query(`ALTER TABLE bets ADD COLUMN IF NOT EXISTS cota_index INTEGER NOT NULL DEFAULT 0;`)
-    .catch(err => console.log('cota_index col:', err.message));
-  await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS penalties_winner TEXT;`)
-    .catch(err => console.log('penalties_winner col:', err.message));
-  await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'finished';`)
-    .catch(err => console.log('status col:', err.message));
-  await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS live_link TEXT;`)
-    .catch(err => console.log('live_link col:', err.message));
-  await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'warning';`)
-    .catch(err => console.log('banner type col:', err.message));
-  // Auto-cleanup comm_log older than 10 days
-  await pool.query(`DELETE FROM comm_log WHERE created_at < NOW() - INTERVAL '10 days';`)
-    .catch(err => console.log('comm_log cleanup:', err.message));
-  
-  try {
-    await pool.query(`ALTER TABLE bets DROP CONSTRAINT IF EXISTS bets_participant_id_match_id_key;`);
-  } catch (e) {
-    console.log('unique constraint drop error:', e.message);
-  }
-  try {
-    await pool.query(`ALTER TABLE bets ADD CONSTRAINT bets_participant_id_match_id_cota_index_key UNIQUE (participant_id, match_id, cota_index);`);
-  } catch (e) {
-    // Expected to fail if already exists
-  }
+let initDBPromise = null;
 
-  await pool.query(
-    `INSERT INTO config (key, value) VALUES ('admin_pin', '2504') ON CONFLICT (key) DO NOTHING`
-  );
-  await pool.query(
-    `INSERT INTO config (key, value) VALUES ('valor_cota', '25') ON CONFLICT (key) DO NOTHING`
-  );
+async function initDB() {
+  if (initDBPromise) return initDBPromise;
+
+  initDBPromise = (async () => {
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS config (
+          key TEXT PRIMARY KEY, value TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS participants (
+          id TEXT PRIMARY KEY, name TEXT NOT NULL, pin TEXT NOT NULL,
+          phone TEXT, cotas INTEGER NOT NULL DEFAULT 1, referred_by TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS bets (
+          id TEXT PRIMARY KEY,
+          participant_id TEXT NOT NULL,
+          match_id TEXT NOT NULL,
+          score1 INTEGER, score2 INTEGER,
+          cota_index INTEGER NOT NULL DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(participant_id, match_id, cota_index)
+        );
+        CREATE TABLE IF NOT EXISTS results (
+          match_id TEXT PRIMARY KEY, score1 INTEGER, score2 INTEGER, status TEXT DEFAULT 'finished'
+        );
+        CREATE TABLE IF NOT EXISTS push_subscriptions (
+          id TEXT PRIMARY KEY,
+          participant_id TEXT,
+          endpoint TEXT UNIQUE NOT NULL,
+          keys_auth TEXT NOT NULL,
+          keys_p256dh TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS banners (
+          id TEXT PRIMARY KEY,
+          message TEXT NOT NULL,
+          type TEXT NOT NULL DEFAULT 'warning',
+          active BOOLEAN NOT NULL DEFAULT FALSE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS comm_log (
+          id TEXT PRIMARY KEY,
+          type TEXT NOT NULL,
+          sub_type TEXT,
+          message TEXT NOT NULL,
+          detail TEXT,
+          recipient_count INTEGER,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS wallets (
+          participant_id TEXT PRIMARY KEY REFERENCES participants(id) ON DELETE CASCADE,
+          balance NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+          total_deposited NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+          total_used NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+          total_won NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+          total_withdrawn NUMERIC(10,2) NOT NULL DEFAULT 0.00
+        );
+        CREATE TABLE IF NOT EXISTS wallet_deposits (
+          id TEXT PRIMARY KEY,
+          participant_id TEXT NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+          amount NUMERIC(10,2) NOT NULL,
+          receipt TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS wallet_transactions (
+          id TEXT PRIMARY KEY,
+          participant_id TEXT NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+          amount NUMERIC(10,2) NOT NULL,
+          type TEXT NOT NULL,
+          description TEXT NOT NULL,
+          reference_id TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS challenge_matches (
+          match_id TEXT PRIMARY KEY,
+          status TEXT NOT NULL DEFAULT 'open',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS challenge_entries (
+          id TEXT PRIMARY KEY,
+          participant_id TEXT NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+          match_id TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(participant_id, match_id)
+        );
+        CREATE TABLE IF NOT EXISTS challenge_predictions (
+          entry_id TEXT PRIMARY KEY REFERENCES challenge_entries(id) ON DELETE CASCADE,
+          score1 INTEGER NOT NULL,
+          score2 INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS challenge_results (
+          match_id TEXT PRIMARY KEY REFERENCES challenge_matches(match_id) ON DELETE CASCADE,
+          status TEXT NOT NULL DEFAULT 'finished',
+          processed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS challenge_prize_distributions (
+          id TEXT PRIMARY KEY,
+          match_id TEXT NOT NULL,
+          participant_id TEXT NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+          amount NUMERIC(10,2) NOT NULL,
+          type TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // Ensure columns exist for older deployments
+      await pool.query(`ALTER TABLE bets ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;`)
+        .catch(err => console.log('created_at col:', err.message));
+      await pool.query(`ALTER TABLE participants ADD COLUMN IF NOT EXISTS phone TEXT;`)
+        .catch(err => console.log('phone col:', err.message));
+      await pool.query(`ALTER TABLE participants ADD COLUMN IF NOT EXISTS cotas INTEGER NOT NULL DEFAULT 1;`)
+        .catch(err => console.log('cotas col:', err.message));
+      await pool.query(`ALTER TABLE participants ADD COLUMN IF NOT EXISTS referred_by TEXT;`)
+        .catch(err => console.log('referred_by col:', err.message));
+      await pool.query(`ALTER TABLE participants ADD COLUMN IF NOT EXISTS approved BOOLEAN NOT NULL DEFAULT TRUE;`)
+        .catch(err => console.log('approved col:', err.message));
+      await pool.query(`ALTER TABLE participants ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;`)
+        .catch(err => console.log('created_at col in participants:', err.message));
+      await pool.query(`ALTER TABLE bets ADD COLUMN IF NOT EXISTS cota_index INTEGER NOT NULL DEFAULT 0;`)
+        .catch(err => console.log('cota_index col:', err.message));
+      await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS penalties_winner TEXT;`)
+        .catch(err => console.log('penalties_winner col:', err.message));
+      await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'finished';`)
+        .catch(err => console.log('status col:', err.message));
+      await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS live_link TEXT;`)
+        .catch(err => console.log('live_link col:', err.message));
+      await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'warning';`)
+        .catch(err => console.log('banner type col:', err.message));
+      
+      // Auto-cleanup comm_log older than 10 days
+      await pool.query(`DELETE FROM comm_log WHERE created_at < NOW() - INTERVAL '10 days';`)
+        .catch(err => console.log('comm_log cleanup:', err.message));
+      
+      try {
+        await pool.query(`ALTER TABLE bets DROP CONSTRAINT IF EXISTS bets_participant_id_match_id_key;`);
+      } catch (e) {
+        console.log('unique constraint drop error:', e.message);
+      }
+      try {
+        await pool.query(`ALTER TABLE bets ADD CONSTRAINT bets_participant_id_match_id_cota_index_key UNIQUE (participant_id, match_id, cota_index);`);
+      } catch (e) {
+        // Expected to fail if already exists
+      }
+
+      await pool.query(
+        `INSERT INTO config (key, value) VALUES ('admin_pin', '2504') ON CONFLICT (key) DO NOTHING`
+      );
+      await pool.query(
+        `INSERT INTO config (key, value) VALUES ('valor_cota', '25') ON CONFLICT (key) DO NOTHING`
+      );
+    } catch (err) {
+      initDBPromise = null; // reset so next request can retry
+      throw err;
+    }
+  })();
+
+  return initDBPromise;
 }
 
 function loadMatches() {
@@ -161,6 +234,203 @@ async function wouldCreateCycle(pool, participantId, referrerId) {
     currentId = res.rows[0]?.referred_by || null;
   }
   return false;
+}
+
+async function autoRollbackChallenge(client, matchId) {
+  const chQuery = await client.query('SELECT status FROM challenge_matches WHERE match_id = $1', [matchId]);
+  const chStatus = chQuery.rows[0]?.status;
+
+  if (chStatus !== 'processed' && chStatus !== 'cancelled') {
+    return;
+  }
+
+  const matches = loadMatches();
+  const match = matches.find(m => String(m.id) === String(matchId));
+  const matchLabel = match ? `${match.team1} x ${match.team2}` : `Jogo #${matchId}`;
+
+  if (chStatus === 'processed') {
+    const dists = await client.query('SELECT participant_id, amount, type FROM challenge_prize_distributions WHERE match_id = $1', [matchId]);
+    for (const dist of dists.rows) {
+      const pId = dist.participant_id;
+      const amt = parseFloat(dist.amount);
+
+      await client.query(
+        `UPDATE wallets SET balance = balance - $1, total_won = total_won - $2 WHERE participant_id = $3`,
+        [amt, dist.type === 'refund' ? 0.00 : amt, pId]
+      );
+
+      await client.query(
+        `INSERT INTO wallet_transactions (id, participant_id, amount, type, description, reference_id)
+         VALUES ($1, $2, $3, 'challenge_rollback', $4, $5)`,
+         [uuidv4(), pId, -amt, `Estorno por reabertura de resultado: ${matchLabel}`, matchId]
+      );
+    }
+    await client.query('DELETE FROM challenge_prize_distributions WHERE match_id = $1', [matchId]);
+    await client.query('DELETE FROM challenge_results WHERE match_id = $1', [matchId]);
+  } else if (chStatus === 'cancelled') {
+    const entriesRes = await client.query('SELECT participant_id FROM challenge_entries WHERE match_id = $1', [matchId]);
+    for (const entry of entriesRes.rows) {
+      const pId = entry.participant_id;
+      await client.query(
+        `UPDATE wallets SET balance = balance - 2.00, total_used = total_used + 2.00 WHERE participant_id = $1`,
+        [pId]
+      );
+      await client.query(
+        `INSERT INTO wallet_transactions (id, participant_id, amount, type, description, reference_id)
+         VALUES ($1, $2, -2.00, 'challenge_rollback', $3, $4)`,
+         [uuidv4(), pId, -2.00, `Estorno de reembolso de cancelamento por reabertura: ${matchLabel}`, matchId]
+      );
+    }
+  }
+
+  await client.query(
+    `UPDATE challenge_matches SET status = 'open' WHERE match_id = $1`,
+    [matchId]
+  );
+}
+
+async function autoProcessChallenge(client, matchId) {
+  const resQuery = await client.query('SELECT score1, score2, status FROM results WHERE match_id = $1', [matchId]);
+  if (!resQuery.rows.length || resQuery.rows[0].score1 === null || resQuery.rows[0].score2 === null) {
+    return;
+  }
+  const realS1 = parseInt(resQuery.rows[0].score1);
+  const realS2 = parseInt(resQuery.rows[0].score2);
+  const mStatus = resQuery.rows[0].status;
+
+  if (mStatus !== 'finished') return;
+
+  const chQuery = await client.query('SELECT status FROM challenge_matches WHERE match_id = $1', [matchId]);
+  const chStatus = chQuery.rows[0]?.status || 'open';
+
+  if (chStatus === 'processed' || chStatus === 'cancelled') {
+    return;
+  }
+
+  const matches = loadMatches();
+  const match = matches.find(m => String(m.id) === String(matchId));
+  const matchLabel = match ? `${match.team1} x ${match.team2}` : `Jogo #${matchId}`;
+
+  const entriesRes = await client.query(
+    `SELECT e.id as entry_id, e.participant_id, p.score1, p.score2
+     FROM challenge_entries e
+     JOIN challenge_predictions p ON e.id = p.entry_id
+     WHERE e.match_id = $1`,
+    [matchId]
+  );
+  const entries = entriesRes.rows;
+  const count = entries.length;
+
+  if (count === 0) {
+    await client.query(
+      `INSERT INTO challenge_matches (match_id, status) VALUES ($1, 'processed')
+       ON CONFLICT (match_id) DO UPDATE SET status = 'processed'`,
+      [matchId]
+    );
+    await client.query(
+      `INSERT INTO challenge_results (match_id, status) VALUES ($1, 'finished') ON CONFLICT (match_id) DO NOTHING`,
+      [matchId]
+    );
+    return;
+  }
+
+  if (count < 3) {
+    for (const entry of entries) {
+      await client.query(
+        `UPDATE wallets SET balance = balance + 2.00, total_used = total_used - 2.00 WHERE participant_id = $1`,
+        [entry.participant_id]
+      );
+      await client.query(
+        `INSERT INTO wallet_transactions (id, participant_id, amount, type, description, reference_id)
+         VALUES ($1, $2, 2.00, 'challenge_refund', $3, $4)`,
+         [uuidv4(), entry.participant_id, `Reembolso de cancelamento (mínimo < 3 inscritos): ${matchLabel}`, matchId]
+      );
+    }
+    await client.query(
+      `INSERT INTO challenge_matches (match_id, status) VALUES ($1, 'cancelled')
+       ON CONFLICT (match_id) DO UPDATE SET status = 'cancelled'`,
+      [matchId]
+    );
+    return;
+  }
+
+  const brutoPool = count * 2.00;
+  const adminFee = brutoPool * 0.10;
+  const netoPool = brutoPool - adminFee;
+
+  const exactWinners = [];
+  const outcomeWinners = [];
+  const sign = (x1, x2) => x1 > x2 ? 1 : x1 < x2 ? -1 : 0;
+  const realSign = sign(realS1, realS2);
+
+  entries.forEach(entry => {
+    const guessS1 = parseInt(entry.score1);
+    const guessS2 = parseInt(entry.score2);
+    const isExact = guessS1 === realS1 && guessS2 === realS2;
+    const isOutcome = sign(guessS1, guessS2) === realSign;
+
+    if (isExact) exactWinners.push(entry.participant_id);
+    if (isOutcome) outcomeWinners.push(entry.participant_id);
+  });
+
+  let distributionType = '';
+  let winners = [];
+  let prizePerWinner = 0;
+
+  if (exactWinners.length > 0) {
+    distributionType = 'exact_score';
+    winners = exactWinners;
+    prizePerWinner = netoPool / exactWinners.length;
+  } else if (outcomeWinners.length > 0) {
+    distributionType = 'outcome';
+    winners = outcomeWinners;
+    prizePerWinner = netoPool / outcomeWinners.length;
+  } else {
+    distributionType = 'refund';
+    winners = entries.map(e => e.participant_id);
+    prizePerWinner = netoPool / count;
+  }
+
+  for (const pId of winners) {
+    await client.query(
+      `UPDATE wallets SET balance = balance + $1, total_won = total_won + $2 WHERE participant_id = $3`,
+      [prizePerWinner, distributionType === 'refund' ? 0.00 : prizePerWinner, pId]
+    );
+
+    let desc = '';
+    if (distributionType === 'exact_score') {
+      desc = `Prêmio do Desafio (Placar Exato): ${matchLabel}`;
+    } else if (distributionType === 'outcome') {
+      desc = `Prêmio do Desafio (Vencedor/Empate): ${matchLabel}`;
+    } else {
+      desc = `Devolução proporcional do pool líquido (sem acertadores): ${matchLabel}`;
+    }
+
+    const distId = uuidv4();
+    await client.query(
+      `INSERT INTO challenge_prize_distributions (id, match_id, participant_id, amount, type)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [distId, matchId, pId, prizePerWinner, distributionType]
+    );
+
+    await client.query(
+      `INSERT INTO wallet_transactions (id, participant_id, amount, type, description, reference_id)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [uuidv4(), pId, prizePerWinner, distributionType === 'refund' ? 'challenge_refund' : 'challenge_prize', desc, matchId]
+    );
+  }
+
+  await client.query(
+    `INSERT INTO challenge_matches (match_id, status) VALUES ($1, 'processed')
+     ON CONFLICT (match_id) DO UPDATE SET status = 'processed'`,
+    [matchId]
+  );
+
+  await client.query(
+    `INSERT INTO challenge_results (match_id, status) VALUES ($1, 'finished')
+     ON CONFLICT (match_id) DO UPDATE SET status = 'finished'`,
+    [matchId]
+  );
 }
 
 function parseBody(req) {
@@ -222,7 +492,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json(matches.map(m => ({
         ...m,
         result: resMap[m.id] || null,
-        locked: isLocked(m)
+        locked: isLocked(m) || (resMap[m.id] && resMap[m.id].score1 !== null && resMap[m.id].score2 !== null)
       })));
     }
 
@@ -234,39 +504,63 @@ module.exports = async function handler(req, res) {
         return res.status(401).json({ error: 'PIN de admin incorreto' });
       const id = matchResult[1];
       const { score1, score2, penalties_winner, status, live_link } = body;
-      if (score1 === null || score1 === undefined) {
-        await pool.query('DELETE FROM results WHERE match_id=$1', [id]);
-        const matches = loadMatches();
-        const m = matches.find(x => String(x.id) === String(id));
-        if (m && (String(m.id) === '104' || m.round === 'Final')) {
-          await pool.query("DELETE FROM config WHERE key='champion'");
-        }
-      } else {
-        await pool.query(
-          `INSERT INTO results (match_id,score1,score2,penalties_winner,status,live_link) VALUES ($1,$2,$3,$4,$5,$6)
-           ON CONFLICT (match_id) DO UPDATE SET score1=$2,score2=$3,penalties_winner=$4,status=$5,live_link=$6`,
-          [id, score1, score2, penalties_winner || null, status || 'finished', live_link || null]
-        );
-        const matches = loadMatches();
-        const m = matches.find(x => String(x.id) === String(id));
-        if (m && (String(m.id) === '104' || m.round === 'Final')) {
-          let champion = null;
-          if (score1 > score2) champion = m.team1;
-          else if (score2 > score1) champion = m.team2;
-          else champion = penalties_winner;
-          
-          if (champion) {
-            await pool.query(
-              `INSERT INTO config (key, value) VALUES ('champion', $1)
-               ON CONFLICT (key) DO UPDATE SET value=$1`,
-              [champion]
-            );
-          } else {
-            await pool.query("DELETE FROM config WHERE key='champion'");
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        if (score1 === null || score1 === undefined) {
+          await autoRollbackChallenge(client, id);
+          await client.query('DELETE FROM results WHERE match_id=$1', [id]);
+          const matches = loadMatches();
+          const m = matches.find(x => String(x.id) === String(id));
+          if (m && (String(m.id) === '104' || m.round === 'Final')) {
+            await client.query("DELETE FROM config WHERE key='champion'");
+          }
+        } else {
+          if (status === 'finished') {
+            await autoRollbackChallenge(client, id);
+          }
+
+          await client.query(
+            `INSERT INTO results (match_id,score1,score2,penalties_winner,status,live_link) VALUES ($1,$2,$3,$4,$5,$6)
+             ON CONFLICT (match_id) DO UPDATE SET score1=$2,score2=$3,penalties_winner=$4,status=$5,live_link=$6`,
+            [id, score1, score2, penalties_winner || null, status || 'finished', live_link || null]
+          );
+
+          const matches = loadMatches();
+          const m = matches.find(x => String(x.id) === String(id));
+          if (m && (String(m.id) === '104' || m.round === 'Final')) {
+            let champion = null;
+            if (score1 > score2) champion = m.team1;
+            else if (score2 > score1) champion = m.team2;
+            else champion = penalties_winner;
+            
+            if (champion) {
+              await client.query(
+                `INSERT INTO config (key, value) VALUES ('champion', $1)
+                 ON CONFLICT (key) DO UPDATE SET value=$1`,
+                [champion]
+              );
+            } else {
+              await client.query("DELETE FROM config WHERE key='champion'");
+            }
+          }
+
+          if (status === 'finished') {
+            await autoProcessChallenge(client, id);
           }
         }
+
+        await client.query('COMMIT');
+        return res.status(200).json({ ok: true });
+      } catch (e) {
+        await client.query('ROLLBACK');
+        console.error('Update match result error:', e);
+        return res.status(500).json({ error: 'Erro ao salvar resultado: ' + e.message });
+      } finally {
+        client.release();
       }
-      return res.status(200).json({ ok: true });
     }
 
     // GET /participants
@@ -460,9 +754,14 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: 'Índice de cota inválido para este participante' });
       }
 
-      // Block bets once the match has started
+      // Block bets once the match has started or score is defined
       const match = loadMatches().find(m => m.id === String(matchId));
-      if (match && isLocked(match)) {
+      if (!match) return res.status(404).json({ error: 'Partida não encontrada' });
+
+      const resCheck = await pool.query('SELECT score1, score2 FROM results WHERE match_id = $1', [String(matchId)]);
+      const scoreDefined = resCheck.rows.length > 0 && resCheck.rows[0].score1 !== null && resCheck.rows[0].score2 !== null;
+
+      if (isLocked(match) || scoreDefined) {
         return res.status(403).json({ error: 'Os palpites para este jogo já foram encerrados' });
       }
 
@@ -779,6 +1078,926 @@ module.exports = async function handler(req, res) {
         `SELECT id, type, sub_type, message, detail, recipient_count, created_at FROM comm_log ORDER BY created_at DESC LIMIT 200`
       );
       return res.status(200).json(rows);
+    }
+
+    // ─── WALLET & CHALLENGE ROUTES ───
+
+    // GET /wallet/summary (participant only)
+    if (url === '/wallet/summary' && method === 'GET') {
+      const pId = req.headers['x-participant-id'];
+      const pPin = req.headers['x-participant-pin'];
+      if (!pId || !pPin) return res.status(401).json({ error: 'Não autorizado' });
+      const pCheck = await pool.query('SELECT pin, approved, cotas, created_at FROM participants WHERE id=$1', [pId]);
+      if (!pCheck.rows.length || pCheck.rows[0].pin !== String(pPin) || pCheck.rows[0].approved === false) {
+        return res.status(401).json({ error: 'Não autorizado' });
+      }
+
+      await pool.query(
+        `INSERT INTO wallets (participant_id, balance, total_deposited, total_used, total_won, total_withdrawn)
+         VALUES ($1, 0, 0, 0, 0, 0)
+         ON CONFLICT (participant_id) DO NOTHING`,
+        [pId]
+      );
+
+      const participant = pCheck.rows[0];
+      const cotasCount = participant.cotas || 1;
+      const createdAt = participant.created_at || new Date();
+
+      const cotaRes = await pool.query(`SELECT value FROM config WHERE key = 'valor_cota'`);
+      const valorCota = parseFloat(cotaRes.rows[0]?.value || '25');
+
+      const walletRes = await pool.query('SELECT balance, total_deposited, total_used, total_won, total_withdrawn FROM wallets WHERE participant_id = $1', [pId]);
+      const wallet = walletRes.rows[0];
+
+      const txRes = await pool.query('SELECT id, amount, type, description, created_at FROM wallet_transactions WHERE participant_id = $1 ORDER BY created_at DESC', [pId]);
+      const depRes = await pool.query('SELECT id, amount, receipt, status, created_at FROM wallet_deposits WHERE participant_id = $1 ORDER BY created_at DESC', [pId]);
+
+      // Construct a virtual transaction for the bolao cota entry
+      const virtualTx = {
+        id: 'bolao-entry-virtual',
+        amount: - (cotasCount * valorCota),
+        type: 'bolao_entry',
+        description: `Inscrição no Bolão (${cotasCount} cota${cotasCount > 1 ? 's' : ''} a R$ ${valorCota.toFixed(2).replace('.', ',')} cada)`,
+        created_at: createdAt
+      };
+
+      const transactions = txRes.rows.map(tx => ({
+        id: tx.id,
+        amount: parseFloat(tx.amount),
+        type: tx.type,
+        description: tx.description,
+        created_at: tx.created_at
+      }));
+
+      transactions.push(virtualTx);
+      transactions.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      return res.status(200).json({
+        wallet: {
+          balance: parseFloat(wallet.balance),
+          total_deposited: parseFloat(wallet.total_deposited),
+          total_used: parseFloat(wallet.total_used),
+          total_won: parseFloat(wallet.total_won),
+          total_withdrawn: parseFloat(wallet.total_withdrawn)
+        },
+        transactions: transactions,
+        deposits: depRes.rows.map(dep => ({ ...dep, amount: parseFloat(dep.amount) }))
+      });
+    }
+
+    // POST /wallet/deposit (participant only)
+    if (url === '/wallet/deposit' && method === 'POST') {
+      const pId = req.headers['x-participant-id'];
+      const pPin = req.headers['x-participant-pin'];
+      if (!pId || !pPin) return res.status(401).json({ error: 'Não autorizado' });
+      const pCheck = await pool.query('SELECT pin, approved FROM participants WHERE id=$1', [pId]);
+      if (!pCheck.rows.length || pCheck.rows[0].pin !== String(pPin) || pCheck.rows[0].approved === false) {
+        return res.status(401).json({ error: 'Não autorizado' });
+      }
+
+      const { amount, receipt } = body;
+      const parsedAmount = parseFloat(amount);
+      if (isNaN(parsedAmount) || parsedAmount < 2.00) {
+        return res.status(400).json({ error: 'Valor mínimo de depósito é R$ 2,00' });
+      }
+      if (!receipt || !receipt.trim()) {
+        return res.status(400).json({ error: 'Comprovante/descrição é obrigatório' });
+      }
+
+      const depositId = uuidv4();
+      await pool.query(
+        `INSERT INTO wallet_deposits (id, participant_id, amount, receipt, status)
+         VALUES ($1, $2, $3, $4, 'pending')`,
+        [depositId, pId, parsedAmount, receipt.trim()]
+      );
+
+      return res.status(200).json({ ok: true, depositId });
+    }
+
+    // POST /challenge/enter (participant only)
+    if (url === '/challenge/enter' && method === 'POST') {
+      const pId = req.headers['x-participant-id'];
+      const pPin = req.headers['x-participant-pin'];
+      if (!pId || !pPin) return res.status(401).json({ error: 'Não autorizado' });
+      const pCheck = await pool.query('SELECT pin, approved FROM participants WHERE id=$1', [pId]);
+      if (!pCheck.rows.length || pCheck.rows[0].pin !== String(pPin) || pCheck.rows[0].approved === false) {
+        return res.status(401).json({ error: 'Não autorizado' });
+      }
+
+      const { matchId, score1, score2 } = body;
+      const s1 = parseInt(score1);
+      const s2 = parseInt(score2);
+      if (isNaN(s1) || isNaN(s2) || s1 < 0 || s2 < 0) {
+        return res.status(400).json({ error: 'Palpite inválido' });
+      }
+
+      const matches = loadMatches();
+      const match = matches.find(m => String(m.id) === String(matchId));
+      if (!match) return res.status(404).json({ error: 'Partida não encontrada' });
+
+      const resCheck = await pool.query('SELECT score1, score2 FROM results WHERE match_id = $1', [String(matchId)]);
+      const scoreDefined = resCheck.rows.length > 0 && resCheck.rows[0].score1 !== null && resCheck.rows[0].score2 !== null;
+
+      if (isLocked(match) || scoreDefined) return res.status(403).json({ error: 'Os palpites para esta partida já foram encerrados' });
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        await client.query(
+          `INSERT INTO wallets (participant_id, balance, total_deposited, total_used, total_won, total_withdrawn)
+           VALUES ($1, 0, 0, 0, 0, 0)
+           ON CONFLICT (participant_id) DO NOTHING`,
+          [pId]
+        );
+
+        const balanceRes = await client.query('SELECT balance FROM wallets WHERE participant_id = $1 FOR UPDATE', [pId]);
+        const balance = parseFloat(balanceRes.rows[0].balance);
+        if (balance < 2.00) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'Saldo insuficiente' });
+        }
+
+        const checkEntry = await client.query('SELECT id FROM challenge_entries WHERE participant_id = $1 AND match_id = $2', [pId, matchId]);
+        if (checkEntry.rows.length) {
+          const entryId = checkEntry.rows[0].id;
+          await client.query(
+            `UPDATE challenge_predictions SET score1 = $1, score2 = $2 WHERE entry_id = $3`,
+            [s1, s2, entryId]
+          );
+          await client.query('COMMIT');
+          return res.status(200).json({ ok: true });
+        }
+
+        await client.query(
+          `UPDATE wallets SET balance = balance - 2.00, total_used = total_used + 2.00 WHERE participant_id = $1`,
+          [pId]
+        );
+
+        await client.query(
+          `INSERT INTO challenge_matches (match_id, status) VALUES ($1, 'open') ON CONFLICT (match_id) DO NOTHING`,
+          [matchId]
+        );
+
+        const entryId = uuidv4();
+        await client.query(
+          `INSERT INTO challenge_entries (id, participant_id, match_id) VALUES ($1, $2, $3)`,
+          [entryId, pId, matchId]
+        );
+
+        await client.query(
+          `INSERT INTO challenge_predictions (entry_id, score1, score2) VALUES ($1, $2, $3)`,
+          [entryId, s1, s2]
+        );
+
+        await client.query(
+          `INSERT INTO wallet_transactions (id, participant_id, amount, type, description, reference_id)
+           VALUES ($1, $2, -2.00, 'challenge_entry', $3, $4)`,
+          [uuidv4(), pId, `Inscrição no Desafio da Partida: ${match.team1} x ${match.team2}`, matchId]
+        );
+
+        await client.query('COMMIT');
+        return res.status(200).json({ ok: true });
+      } catch (e) {
+        await client.query('ROLLBACK');
+        console.error('Challenge enter error:', e);
+        return res.status(500).json({ error: 'Erro ao processar inscrição: ' + e.message });
+      } finally {
+        client.release();
+      }
+    }
+
+    // GET /challenge/matches
+    if (url === '/challenge/matches' && method === 'GET') {
+      const pId = req.headers['x-participant-id'];
+
+      const countsRes = await pool.query(
+        `SELECT match_id, COUNT(*) as count FROM challenge_entries GROUP BY match_id`
+      );
+      const countMap = {};
+      countsRes.rows.forEach(r => { countMap[r.match_id] = parseInt(r.count); });
+
+      const statusRes = await pool.query(`SELECT match_id, status FROM challenge_matches`);
+      const statusMap = {};
+      statusRes.rows.forEach(r => { statusMap[r.match_id] = r.status; });
+
+      const myPreds = {};
+      if (pId) {
+        const myRes = await pool.query(
+          `SELECT e.match_id, p.score1, p.score2 
+           FROM challenge_entries e
+           JOIN challenge_predictions p ON e.id = p.entry_id
+           WHERE e.participant_id = $1`,
+          [pId]
+        );
+        myRes.rows.forEach(r => {
+          myPreds[r.match_id] = { score1: r.score1, score2: r.score2 };
+        });
+      }
+
+      const myPrizes = {};
+      if (pId) {
+        const prizeRes = await pool.query(
+          `SELECT match_id, amount, type FROM challenge_prize_distributions WHERE participant_id = $1`,
+          [pId]
+        );
+        prizeRes.rows.forEach(r => {
+          myPrizes[r.match_id] = { amount: parseFloat(r.amount), type: r.type };
+        });
+      }
+
+      return res.status(200).json({
+        counts: countMap,
+        statuses: statusMap,
+        myPredictions: myPreds,
+        myPrizes: myPrizes
+      });
+    }
+
+    // GET /challenge/history (participant only)
+    if (url === '/challenge/history' && method === 'GET') {
+      const pId = req.headers['x-participant-id'];
+      const pPin = req.headers['x-participant-pin'];
+      if (!pId || !pPin) return res.status(401).json({ error: 'Não autorizado' });
+      const pCheck = await pool.query('SELECT pin, approved FROM participants WHERE id=$1', [pId]);
+      if (!pCheck.rows.length || pCheck.rows[0].pin !== String(pPin) || pCheck.rows[0].approved === false) {
+        return res.status(401).json({ error: 'Não autorizado' });
+      }
+
+      const betsRes = await pool.query(
+        `SELECT b.match_id as "matchId", b.score1, b.score2, b.cota_index as "cotaIndex"
+         FROM bets b
+         WHERE b.participant_id = $1
+         ORDER BY b.created_at DESC`,
+        [pId]
+      );
+
+      const challengeRes = await pool.query(
+        `SELECT e.match_id as "matchId", p.score1, p.score2, e.created_at,
+                m.status as "matchStatus",
+                dist.amount as "prize", dist.type as "prizeType",
+                (SELECT COUNT(*) FROM challenge_entries WHERE match_id = e.match_id) as "totalParticipants"
+         FROM challenge_entries e
+         JOIN challenge_predictions p ON e.id = p.entry_id
+         LEFT JOIN challenge_matches m ON e.match_id = m.match_id
+         LEFT JOIN challenge_prize_distributions dist ON e.match_id = dist.match_id AND dist.participant_id = $1
+         WHERE e.participant_id = $1
+         ORDER BY e.created_at DESC`,
+        [pId]
+      );
+
+      const matches = loadMatches();
+      const resultsRes = await pool.query('SELECT match_id, score1, score2, status FROM results');
+      const resMap = {};
+      resultsRes.rows.forEach(r => { resMap[r.match_id] = { score1: r.score1, score2: r.score2, status: r.status }; });
+
+      return res.status(200).json({
+        bolao: betsRes.rows,
+        desafios: challengeRes.rows.map(c => ({
+          ...c,
+          prize: c.prize ? parseFloat(c.prize) : 0,
+          totalParticipants: c.totalParticipants ? parseInt(c.totalParticipants) : 0
+        })),
+        results: resMap,
+        matches: matches
+      });
+    }
+
+    // ─── ADMIN FINANCE & CHALLENGE ROUTES ───
+
+    // GET /admin/deposits/pending (admin only)
+    if (url === '/admin/deposits/pending' && method === 'GET') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+
+      const { rows } = await pool.query(
+        `SELECT d.id, d.participant_id as "participantId", p.name as "participantName", d.amount, d.receipt, d.created_at
+         FROM wallet_deposits d
+         JOIN participants p ON d.participant_id = p.id
+         WHERE d.status = 'pending'
+         ORDER BY d.created_at DESC`
+      );
+      return res.status(200).json(rows.map(r => ({ ...r, amount: parseFloat(r.amount) })));
+    }
+
+    // PUT /admin/deposits/:id/approve (admin only)
+    const approveDeposit = url.match(/^\/admin\/deposits\/([^/]+)\/approve$/);
+    if (approveDeposit && method === 'PUT') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+
+      const depositId = approveDeposit[1];
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        const depCheck = await client.query('SELECT participant_id, amount, status FROM wallet_deposits WHERE id = $1 FOR UPDATE', [depositId]);
+        if (!depCheck.rows.length) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ error: 'Solicitação não encontrada' });
+        }
+        const dep = depCheck.rows[0];
+        if (dep.status !== 'pending') {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'Solicitação já processada' });
+        }
+
+        const pId = dep.participant_id;
+        const amount = parseFloat(dep.amount);
+
+        await client.query(
+          `INSERT INTO wallets (participant_id, balance, total_deposited, total_used, total_won, total_withdrawn)
+           VALUES ($1, 0, 0, 0, 0, 0)
+           ON CONFLICT (participant_id) DO NOTHING`,
+          [pId]
+        );
+
+        await client.query(`UPDATE wallet_deposits SET status = 'approved' WHERE id = $1`, [depositId]);
+
+        await client.query(
+          `UPDATE wallets SET balance = balance + $1, total_deposited = total_deposited + $1 WHERE participant_id = $2`,
+          [amount, pId]
+        );
+
+        await client.query(
+          `INSERT INTO wallet_transactions (id, participant_id, amount, type, description, reference_id)
+           VALUES ($1, $2, $3, 'deposit', 'Crédito de depósito PIX aprovado', $4)`,
+          [uuidv4(), pId, amount, depositId]
+        );
+
+        await client.query('COMMIT');
+        return res.status(200).json({ ok: true });
+      } catch (e) {
+        await client.query('ROLLBACK');
+        console.error('Approve deposit error:', e);
+        return res.status(500).json({ error: 'Erro ao aprovar depósito: ' + e.message });
+      } finally {
+        client.release();
+      }
+    }
+
+    // PUT /admin/deposits/:id/reject (admin only)
+    const rejectDeposit = url.match(/^\/admin\/deposits\/([^/]+)\/reject$/);
+    if (rejectDeposit && method === 'PUT') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+
+      const depositId = rejectDeposit[1];
+      const resUpdate = await pool.query(`UPDATE wallet_deposits SET status = 'rejected' WHERE id = $1 AND status = 'pending'`, [depositId]);
+      if (resUpdate.rowCount === 0) {
+        return res.status(404).json({ error: 'Solicitação não encontrada ou já processada' });
+      }
+      return res.status(200).json({ ok: true });
+    }
+
+    // POST /admin/wallet/adjust (admin only)
+    if (url === '/admin/wallet/adjust' && method === 'POST') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+
+      const { participantId, amount, description } = body;
+      const parsedAmount = parseFloat(amount);
+      if (isNaN(parsedAmount) || parsedAmount === 0) {
+        return res.status(400).json({ error: 'Valor inválido para ajuste' });
+      }
+      if (!description || !description.trim()) {
+        return res.status(400).json({ error: 'Descrição é obrigatória' });
+      }
+
+      const pCheck = await pool.query('SELECT name FROM participants WHERE id = $1', [participantId]);
+      if (!pCheck.rows.length) {
+        return res.status(404).json({ error: 'Participante não encontrado' });
+      }
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        await client.query(
+          `INSERT INTO wallets (participant_id, balance, total_deposited, total_used, total_won, total_withdrawn)
+           VALUES ($1, 0, 0, 0, 0, 0)
+           ON CONFLICT (participant_id) DO NOTHING`,
+          [participantId]
+        );
+
+        const walletRes = await client.query('SELECT balance FROM wallets WHERE participant_id = $1 FOR UPDATE', [participantId]);
+        const currentBalance = parseFloat(walletRes.rows[0].balance);
+        if (currentBalance + parsedAmount < 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'Saldo final não pode ser menor que zero' });
+        }
+
+        await client.query(
+          `UPDATE wallets SET balance = balance + $1 WHERE participant_id = $2`,
+          [parsedAmount, participantId]
+        );
+
+        await client.query(
+          `INSERT INTO wallet_transactions (id, participant_id, amount, type, description, reference_id)
+           VALUES ($1, $2, $3, 'manual_adjustment', $4, NULL)`,
+          [uuidv4(), participantId, parsedAmount, description.trim()]
+        );
+
+        await client.query('COMMIT');
+        return res.status(200).json({ ok: true });
+      } catch (e) {
+        await client.query('ROLLBACK');
+        console.error('Wallet adjust error:', e);
+        return res.status(500).json({ error: 'Erro ao ajustar saldo: ' + e.message });
+      } finally {
+        client.release();
+      }
+    }
+
+    // GET /admin/transactions (admin only)
+    if (url === '/admin/transactions' && method === 'GET') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+
+      const { rows } = await pool.query(
+        `SELECT t.id, t.participant_id as "participantId", p.name as "participantName", t.amount, t.type, t.description, t.created_at
+         FROM wallet_transactions t
+         JOIN participants p ON t.participant_id = p.id
+         ORDER BY t.created_at DESC`
+      );
+      return res.status(200).json(rows.map(r => ({ ...r, amount: parseFloat(r.amount) })));
+    }
+
+    // GET /admin/wallets (admin only)
+    if (url === '/admin/wallets' && method === 'GET') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+
+      const { rows } = await pool.query(
+        `SELECT p.id as "participantId", p.name as "participantName",
+                COALESCE(w.balance, 0.00) as "balance",
+                COALESCE(w.total_deposited, 0.00) as "totalDeposited",
+                COALESCE(w.total_used, 0.00) as "totalUsed",
+                COALESCE(w.total_won, 0.00) as "totalWon",
+                COALESCE(w.total_withdrawn, 0.00) as "totalWithdrawn"
+         FROM participants p
+         LEFT JOIN wallets w ON p.id = w.participant_id
+         WHERE p.approved = TRUE
+         ORDER BY p.name`
+      );
+      return res.status(200).json(rows.map(r => ({
+        ...r,
+        balance: parseFloat(r.balance),
+        totalDeposited: parseFloat(r.totalDeposited),
+        totalUsed: parseFloat(r.totalUsed),
+        totalWon: parseFloat(r.totalWon),
+        totalWithdrawn: parseFloat(r.totalWithdrawn)
+      })));
+    }
+
+
+    // GET /admin/challenges/predictions (admin only)
+    if (url === '/admin/challenges/predictions' && method === 'GET') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+
+      const { rows } = await pool.query(
+        `SELECT e.id, e.participant_id as "participantId", e.match_id as "matchId", pr.score1, pr.score2, e.created_at as "createdAt"
+         FROM challenge_entries e
+         JOIN challenge_predictions pr ON e.id = pr.entry_id
+         ORDER BY e.created_at DESC`
+      );
+      return res.status(200).json(rows);
+    }
+
+    // GET /admin/challenges/:matchId/entries (admin only)
+    const adminEntries = url.match(/^\/admin\/challenges\/([^/]+)\/entries$/);
+    if (adminEntries && method === 'GET') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+
+      const matchId = adminEntries[1];
+      const { rows } = await pool.query(
+        `SELECT e.participant_id as "participantId", p.name as "participantName", pr.score1, pr.score2, e.created_at
+         FROM challenge_entries e
+         JOIN challenge_predictions pr ON e.id = pr.entry_id
+         JOIN participants p ON e.participant_id = p.id
+         WHERE e.match_id = $1
+         ORDER BY e.created_at ASC`,
+        [matchId]
+      );
+      return res.status(200).json(rows);
+    }
+
+    // POST /admin/challenges/:matchId/cancel (admin only)
+    const adminCancelChallenge = url.match(/^\/admin\/challenges\/([^/]+)\/cancel$/);
+    if (adminCancelChallenge && method === 'POST') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+
+      const matchId = adminCancelChallenge[1];
+      const matches = loadMatches();
+      const match = matches.find(m => String(m.id) === String(matchId));
+      const matchLabel = match ? `${match.team1} x ${match.team2}` : `Jogo #${matchId}`;
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        const chCheck = await client.query('SELECT status FROM challenge_matches WHERE match_id = $1 FOR UPDATE', [matchId]);
+        if (!chCheck.rows.length) {
+          await client.query(
+            `INSERT INTO challenge_matches (match_id, status) VALUES ($1, 'open') ON CONFLICT (match_id) DO NOTHING`,
+            [matchId]
+          );
+        } else if (chCheck.rows[0].status === 'cancelled') {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'Desafio já está cancelado' });
+        }
+
+        const entries = await client.query('SELECT id, participant_id FROM challenge_entries WHERE match_id = $1', [matchId]);
+        
+        for (const entry of entries.rows) {
+          const pId = entry.participant_id;
+          await client.query(
+            `UPDATE wallets SET balance = balance + 2.00, total_used = total_used - 2.00 WHERE participant_id = $1`,
+            [pId]
+          );
+          await client.query(
+            `INSERT INTO wallet_transactions (id, participant_id, amount, type, description, reference_id)
+             VALUES ($1, $2, 2.00, 'challenge_refund', $3, $4)`,
+             [uuidv4(), pId, `Reembolso de cancelamento do desafio: ${matchLabel}`, matchId]
+          );
+        }
+
+        await client.query('DELETE FROM challenge_prize_distributions WHERE match_id = $1', [matchId]);
+        await client.query('DELETE FROM challenge_results WHERE match_id = $1', [matchId]);
+
+        await client.query(
+          `INSERT INTO challenge_matches (match_id, status) VALUES ($1, 'cancelled')
+           ON CONFLICT (match_id) DO UPDATE SET status = 'cancelled'`,
+          [matchId]
+        );
+
+        await client.query('COMMIT');
+        return res.status(200).json({ ok: true });
+      } catch (e) {
+        await client.query('ROLLBACK');
+        console.error('Cancel challenge error:', e);
+        return res.status(500).json({ error: 'Erro ao cancelar desafio: ' + e.message });
+      } finally {
+        client.release();
+      }
+    }
+
+    // POST /admin/challenges/:matchId/process (admin only)
+    const adminProcessChallenge = url.match(/^\/admin\/challenges\/([^/]+)\/process$/);
+    if (adminProcessChallenge && method === 'POST') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+
+      const matchId = adminProcessChallenge[1];
+
+      const resultRes = await pool.query('SELECT score1, score2 FROM results WHERE match_id = $1', [matchId]);
+      if (!resultRes.rows.length || resultRes.rows[0].score1 === null || resultRes.rows[0].score2 === null) {
+        return res.status(400).json({ error: 'A partida ainda não possui resultado final registrado no sistema' });
+      }
+      const realS1 = parseInt(resultRes.rows[0].score1);
+      const realS2 = parseInt(resultRes.rows[0].score2);
+
+      const matches = loadMatches();
+      const match = matches.find(m => String(m.id) === String(matchId));
+      const matchLabel = match ? `${match.team1} x ${match.team2}` : `Jogo #${matchId}`;
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        const chCheck = await client.query('SELECT status FROM challenge_matches WHERE match_id = $1 FOR UPDATE', [matchId]);
+        if (chCheck.rows.length && chCheck.rows[0].status === 'cancelled') {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'Este desafio está cancelado e não pode ser processado' });
+        }
+
+        const entriesRes = await client.query(
+          `SELECT e.id as entry_id, e.participant_id, p.score1, p.score2
+           FROM challenge_entries e
+           JOIN challenge_predictions p ON e.id = p.entry_id
+           WHERE e.match_id = $1`,
+          [matchId]
+        );
+        const entries = entriesRes.rows;
+        const count = entries.length;
+
+        if (count === 0) {
+          await client.query(
+            `INSERT INTO challenge_matches (match_id, status) VALUES ($1, 'processed')
+             ON CONFLICT (match_id) DO UPDATE SET status = 'processed'`,
+            [matchId]
+          );
+          await client.query(
+            `INSERT INTO challenge_results (match_id, status) VALUES ($1, 'finished') ON CONFLICT (match_id) DO NOTHING`,
+            [matchId]
+          );
+          await client.query('COMMIT');
+          return res.status(200).json({ ok: true, message: 'Nenhuma aposta cadastrada para este jogo' });
+        }
+
+        if (count < 3) {
+          for (const entry of entries) {
+            await client.query(
+              `UPDATE wallets SET balance = balance + 2.00, total_used = total_used - 2.00 WHERE participant_id = $1`,
+              [entry.participant_id]
+            );
+            await client.query(
+              `INSERT INTO wallet_transactions (id, participant_id, amount, type, description, reference_id)
+               VALUES ($1, $2, 2.00, 'challenge_refund', $3, $4)`,
+               [uuidv4(), entry.participant_id, `Reembolso de cancelamento (mínimo < 3 inscritos): ${matchLabel}`, matchId]
+            );
+          }
+
+          await client.query(
+            `INSERT INTO challenge_matches (match_id, status) VALUES ($1, 'cancelled')
+             ON CONFLICT (match_id) DO UPDATE SET status = 'cancelled'`,
+            [matchId]
+          );
+          await client.query('COMMIT');
+          return res.status(200).json({ ok: true, cancelled: true, message: 'Desafio cancelado por possuir menos de 3 participantes. Valor estornado.' });
+        }
+
+        const brutoPool = count * 2.00;
+        const adminFee = brutoPool * 0.10;
+        const netoPool = brutoPool - adminFee;
+
+        const exactWinners = [];
+        const outcomeWinners = [];
+        const sign = (x1, x2) => x1 > x2 ? 1 : x1 < x2 ? -1 : 0;
+        const realSign = sign(realS1, realS2);
+
+        entries.forEach(entry => {
+          const guessS1 = parseInt(entry.score1);
+          const guessS2 = parseInt(entry.score2);
+          const isExact = guessS1 === realS1 && guessS2 === realS2;
+          const isOutcome = sign(guessS1, guessS2) === realSign;
+
+          if (isExact) exactWinners.push(entry.participant_id);
+          if (isOutcome) outcomeWinners.push(entry.participant_id);
+        });
+
+        let distributionType = '';
+        let winners = [];
+        let prizePerWinner = 0;
+
+        if (exactWinners.length > 0) {
+          distributionType = 'exact_score';
+          winners = exactWinners;
+          prizePerWinner = netoPool / exactWinners.length;
+        } else if (outcomeWinners.length > 0) {
+          distributionType = 'outcome';
+          winners = outcomeWinners;
+          prizePerWinner = netoPool / outcomeWinners.length;
+        } else {
+          distributionType = 'refund';
+          winners = entries.map(e => e.participant_id);
+          prizePerWinner = netoPool / count;
+        }
+
+        for (const pId of winners) {
+          await client.query(
+            `UPDATE wallets SET balance = balance + $1, total_won = total_won + $2 WHERE participant_id = $3`,
+            [prizePerWinner, distributionType === 'refund' ? 0.00 : prizePerWinner, pId]
+          );
+
+          let desc = '';
+          if (distributionType === 'exact_score') {
+            desc = `Prêmio do Desafio (Placar Exato): ${matchLabel}`;
+          } else if (distributionType === 'outcome') {
+            desc = `Prêmio do Desafio (Vencedor/Empate): ${matchLabel}`;
+          } else {
+            desc = `Devolução proporcional do pool líquido (sem acertadores): ${matchLabel}`;
+          }
+
+          const distId = uuidv4();
+          await client.query(
+            `INSERT INTO challenge_prize_distributions (id, match_id, participant_id, amount, type)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [distId, matchId, pId, prizePerWinner, distributionType]
+          );
+
+          await client.query(
+            `INSERT INTO wallet_transactions (id, participant_id, amount, type, description, reference_id)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [uuidv4(), pId, prizePerWinner, distributionType === 'refund' ? 'challenge_refund' : 'challenge_prize', desc, matchId]
+          );
+        }
+
+        await client.query(
+          `INSERT INTO challenge_matches (match_id, status) VALUES ($1, 'processed')
+           ON CONFLICT (match_id) DO UPDATE SET status = 'processed'`,
+          [matchId]
+        );
+
+        await client.query(
+          `INSERT INTO challenge_results (match_id, status) VALUES ($1, 'finished')
+           ON CONFLICT (match_id) DO UPDATE SET status = 'finished'`,
+          [matchId]
+        );
+
+        await client.query('COMMIT');
+        return res.status(200).json({
+          ok: true,
+          count,
+          brutoPool,
+          netoPool,
+          winnersCount: winners.length,
+          prizePerWinner,
+          type: distributionType
+        });
+      } catch (e) {
+        await client.query('ROLLBACK');
+        console.error('Process challenge error:', e);
+        return res.status(500).json({ error: 'Erro ao processar desafio: ' + e.message });
+      } finally {
+        client.release();
+      }
+    }
+
+    // POST /admin/challenges/:matchId/recalculate (admin only)
+    const adminRecalculateChallenge = url.match(/^\/admin\/challenges\/([^/]+)\/recalculate$/);
+    if (adminRecalculateChallenge && method === 'POST') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+
+      const matchId = adminRecalculateChallenge[1];
+
+      const resultRes = await pool.query('SELECT score1, score2 FROM results WHERE match_id = $1', [matchId]);
+      if (!resultRes.rows.length || resultRes.rows[0].score1 === null || resultRes.rows[0].score2 === null) {
+        return res.status(400).json({ error: 'A partida ainda não possui resultado final registrado no sistema' });
+      }
+      const realS1 = parseInt(resultRes.rows[0].score1);
+      const realS2 = parseInt(resultRes.rows[0].score2);
+
+      const matches = loadMatches();
+      const match = matches.find(m => String(m.id) === String(matchId));
+      const matchLabel = match ? `${match.team1} x ${match.team2}` : `Jogo #${matchId}`;
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        const chCheck = await client.query('SELECT status FROM challenge_matches WHERE match_id = $1 FOR UPDATE', [matchId]);
+        if (!chCheck.rows.length || chCheck.rows[0].status !== 'processed') {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'Este desafio ainda não foi processado' });
+        }
+
+        const dists = await client.query('SELECT participant_id, amount, type FROM challenge_prize_distributions WHERE match_id = $1', [matchId]);
+        for (const dist of dists.rows) {
+          const pId = dist.participant_id;
+          const amt = parseFloat(dist.amount);
+
+          await client.query(
+            `UPDATE wallets SET balance = balance - $1, total_won = total_won - $2 WHERE participant_id = $3`,
+            [amt, dist.type === 'refund' ? 0.00 : amt, pId]
+          );
+
+          await client.query(
+            `INSERT INTO wallet_transactions (id, participant_id, amount, type, description, reference_id)
+             VALUES ($1, $2, $3, 'challenge_rollback', $4, $5)`,
+             [uuidv4(), pId, -amt, `Estorno por recalculo de premiação: ${matchLabel}`, matchId]
+          );
+        }
+
+        await client.query('DELETE FROM challenge_prize_distributions WHERE match_id = $1', [matchId]);
+        await client.query('DELETE FROM challenge_results WHERE match_id = $1', [matchId]);
+
+        const entriesRes = await client.query(
+          `SELECT e.id as entry_id, e.participant_id, p.score1, p.score2
+           FROM challenge_entries e
+           JOIN challenge_predictions p ON e.id = p.entry_id
+           WHERE e.match_id = $1`,
+          [matchId]
+        );
+        const entries = entriesRes.rows;
+        const count = entries.length;
+
+        if (count === 0) {
+          await client.query(`UPDATE challenge_matches SET status = 'processed' WHERE match_id = $1`, [matchId]);
+          await client.query('COMMIT');
+          return res.status(200).json({ ok: true, message: 'Processado sem palpites' });
+        }
+
+        if (count < 3) {
+          for (const entry of entries) {
+            await client.query(
+              `UPDATE wallets SET balance = balance + 2.00, total_used = total_used - 2.00 WHERE participant_id = $1`,
+              [entry.participant_id]
+            );
+            await client.query(
+              `INSERT INTO wallet_transactions (id, participant_id, amount, type, description, reference_id)
+               VALUES ($1, $2, 2.00, 'challenge_refund', $3, $4)`,
+               [uuidv4(), entry.participant_id, `Reembolso de cancelamento (mínimo < 3 inscritos): ${matchLabel}`, matchId]
+            );
+          }
+          await client.query(`UPDATE challenge_matches SET status = 'cancelled' WHERE match_id = $1`, [matchId]);
+          await client.query('COMMIT');
+          return res.status(200).json({ ok: true, message: 'Desafio cancelado por possuir menos de 3 participantes.' });
+        }
+
+        const brutoPool = count * 2.00;
+        const adminFee = brutoPool * 0.10;
+        const netoPool = brutoPool - adminFee;
+
+        const exactWinners = [];
+        const outcomeWinners = [];
+        const sign = (x1, x2) => x1 > x2 ? 1 : x1 < x2 ? -1 : 0;
+        const realSign = sign(realS1, realS2);
+
+        entries.forEach(entry => {
+          const guessS1 = parseInt(entry.score1);
+          const guessS2 = parseInt(entry.score2);
+          const isExact = guessS1 === realS1 && guessS2 === realS2;
+          const isOutcome = sign(guessS1, guessS2) === realSign;
+          if (isExact) exactWinners.push(entry.participant_id);
+          if (isOutcome) outcomeWinners.push(entry.participant_id);
+        });
+
+        let distributionType = '';
+        let winners = [];
+        let prizePerWinner = 0;
+
+        if (exactWinners.length > 0) {
+          distributionType = 'exact_score';
+          winners = exactWinners;
+          prizePerWinner = netoPool / exactWinners.length;
+        } else if (outcomeWinners.length > 0) {
+          distributionType = 'outcome';
+          winners = outcomeWinners;
+          prizePerWinner = netoPool / outcomeWinners.length;
+        } else {
+          distributionType = 'refund';
+          winners = entries.map(e => e.participant_id);
+          prizePerWinner = netoPool / count;
+        }
+
+        for (const pId of winners) {
+          await client.query(
+            `UPDATE wallets SET balance = balance + $1, total_won = total_won + $2 WHERE participant_id = $3`,
+            [prizePerWinner, distributionType === 'refund' ? 0.00 : prizePerWinner, pId]
+          );
+
+          let desc = '';
+          if (distributionType === 'exact_score') {
+            desc = `Prêmio do Desafio (Placar Exato): ${matchLabel}`;
+          } else if (distributionType === 'outcome') {
+            desc = `Prêmio do Desafio (Vencedor/Empate): ${matchLabel}`;
+          } else {
+            desc = `Devolução proporcional do pool líquido (sem acertadores): ${matchLabel}`;
+          }
+
+          await client.query(
+            `INSERT INTO challenge_prize_distributions (id, match_id, participant_id, amount, type)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [uuidv4(), matchId, pId, prizePerWinner, distributionType]
+          );
+
+          await client.query(
+            `INSERT INTO wallet_transactions (id, participant_id, amount, type, description, reference_id)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [uuidv4(), pId, prizePerWinner, distributionType === 'refund' ? 'challenge_refund' : 'challenge_prize', desc, matchId]
+          );
+        }
+
+        await client.query(`UPDATE challenge_matches SET status = 'processed' WHERE match_id = $1`, [matchId]);
+        await client.query(
+          `INSERT INTO challenge_results (match_id, status) VALUES ($1, 'finished')
+           ON CONFLICT (match_id) DO UPDATE SET status = 'finished'`,
+          [matchId]
+        );
+
+        await client.query('COMMIT');
+        return res.status(200).json({
+          ok: true,
+          count,
+          brutoPool,
+          netoPool,
+          winnersCount: winners.length,
+          prizePerWinner,
+          type: distributionType
+        });
+      } catch (e) {
+        await client.query('ROLLBACK');
+        console.error('Recalculate challenge error:', e);
+        return res.status(500).json({ error: 'Erro ao recalcular desafio: ' + e.message });
+      } finally {
+        client.release();
+      }
     }
 
     return res.status(404).json({ error: 'Rota não encontrada: ' + url });

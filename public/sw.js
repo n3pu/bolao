@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bolao-unk-v4';
+const CACHE_NAME = 'bolao-unk-v5';
 const ASSETS = [
   '/',
   '/index.html',
@@ -35,21 +35,17 @@ self.addEventListener('fetch', function(event) {
     return;
   }
   event.respondWith(
-    caches.match(event.request).then(function(cachedResponse) {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).then(function(networkResponse) {
-        if (!networkResponse || networkResponse.status !== 200) {
-          return networkResponse;
-        }
+    fetch(event.request).then(function(networkResponse) {
+      if (networkResponse && networkResponse.status === 200) {
         const responseToCache = networkResponse.clone();
         caches.open(CACHE_NAME).then(function(cache) {
           cache.put(event.request, responseToCache);
         });
-        return networkResponse;
-      }).catch(function() {
-        return caches.match('/index.html');
+      }
+      return networkResponse;
+    }).catch(function() {
+      return caches.match(event.request).then(function(cachedResponse) {
+        return cachedResponse || caches.match('/index.html');
       });
     })
   );
