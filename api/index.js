@@ -40,7 +40,8 @@ async function initDB() {
         );
         CREATE TABLE IF NOT EXISTS participants (
           id TEXT PRIMARY KEY, name TEXT NOT NULL, pin TEXT NOT NULL,
-          phone TEXT, cotas INTEGER NOT NULL DEFAULT 1, referred_by TEXT
+          phone TEXT, cotas INTEGER NOT NULL DEFAULT 1, referred_by TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS bets (
           id TEXT PRIMARY KEY,
@@ -146,6 +147,8 @@ async function initDB() {
         .catch(err => console.log('referred_by col:', err.message));
       await pool.query(`ALTER TABLE participants ADD COLUMN IF NOT EXISTS approved BOOLEAN NOT NULL DEFAULT TRUE;`)
         .catch(err => console.log('approved col:', err.message));
+      await pool.query(`ALTER TABLE participants ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;`)
+        .catch(err => console.log('created_at col in participants:', err.message));
       await pool.query(`ALTER TABLE bets ADD COLUMN IF NOT EXISTS cota_index INTEGER NOT NULL DEFAULT 0;`)
         .catch(err => console.log('cota_index col:', err.message));
       await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS penalties_winner TEXT;`)
@@ -1084,7 +1087,7 @@ module.exports = async function handler(req, res) {
       const pId = req.headers['x-participant-id'];
       const pPin = req.headers['x-participant-pin'];
       if (!pId || !pPin) return res.status(401).json({ error: 'Não autorizado' });
-      const pCheck = await pool.query('SELECT pin, approved FROM participants WHERE id=$1', [pId]);
+      const pCheck = await pool.query('SELECT pin, approved, cotas, created_at FROM participants WHERE id=$1', [pId]);
       if (!pCheck.rows.length || pCheck.rows[0].pin !== String(pPin) || pCheck.rows[0].approved === false) {
         return res.status(401).json({ error: 'Não autorizado' });
       }
@@ -1096,11 +1099,38 @@ module.exports = async function handler(req, res) {
         [pId]
       );
 
+      const participant = pCheck.rows[0];
+      const cotasCount = participant.cotas || 1;
+      const createdAt = participant.created_at || new Date();
+
+      const cotaRes = await pool.query(`SELECT value FROM config WHERE key = 'valor_cota'`);
+      const valorCota = parseFloat(cotaRes.rows[0]?.value || '25');
+
       const walletRes = await pool.query('SELECT balance, total_deposited, total_used, total_won, total_withdrawn FROM wallets WHERE participant_id = $1', [pId]);
       const wallet = walletRes.rows[0];
 
       const txRes = await pool.query('SELECT id, amount, type, description, created_at FROM wallet_transactions WHERE participant_id = $1 ORDER BY created_at DESC', [pId]);
       const depRes = await pool.query('SELECT id, amount, receipt, status, created_at FROM wallet_deposits WHERE participant_id = $1 ORDER BY created_at DESC', [pId]);
+
+      // Construct a virtual transaction for the bolao cota entry
+      const virtualTx = {
+        id: 'bolao-entry-virtual',
+        amount: - (cotasCount * valorCota),
+        type: 'bolao_entry',
+        description: `Inscrição no Bolão (${cotasCount} cota${cotasCount > 1 ? 's' : ''} a R$ ${valorCota.toFixed(2).replace('.', ',')} cada)`,
+        created_at: createdAt
+      };
+
+      const transactions = txRes.rows.map(tx => ({
+        id: tx.id,
+        amount: parseFloat(tx.amount),
+        type: tx.type,
+        description: tx.description,
+        created_at: tx.created_at
+      }));
+
+      transactions.push(virtualTx);
+      transactions.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
       return res.status(200).json({
         wallet: {
@@ -1110,7 +1140,7 @@ module.exports = async function handler(req, res) {
           total_won: parseFloat(wallet.total_won),
           total_withdrawn: parseFloat(wallet.total_withdrawn)
         },
-        transactions: txRes.rows.map(tx => ({ ...tx, amount: parseFloat(tx.amount) })),
+        transactions: transactions,
         deposits: depRes.rows.map(dep => ({ ...dep, amount: parseFloat(dep.amount) }))
       });
     }
@@ -1265,10 +1295,22 @@ module.exports = async function handler(req, res) {
         });
       }
 
+      const myPrizes = {};
+      if (pId) {
+        const prizeRes = await pool.query(
+          `SELECT match_id, amount, type FROM challenge_prize_distributions WHERE participant_id = $1`,
+          [pId]
+        );
+        prizeRes.rows.forEach(r => {
+          myPrizes[r.match_id] = { amount: parseFloat(r.amount), type: r.type };
+        });
+      }
+
       return res.status(200).json({
         counts: countMap,
         statuses: statusMap,
-        myPredictions: myPreds
+        myPredictions: myPreds,
+        myPrizes: myPrizes
       });
     }
 

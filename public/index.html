@@ -3257,9 +3257,29 @@
         </span>
       </div>
 
+      <!-- Warning Banner explaining wallet balance vs bolão cotas -->
+      <div class="wallet-warning-banner" style="margin: 0 0 20px 0; padding: 12px 16px; border: 1.5px solid rgba(201, 168, 76, 0.2); border-radius: 8px; background: rgba(201, 168, 76, 0.03); display: flex; gap: 10px; align-items: flex-start; line-height: 1.4; font-size: 0.8rem;">
+        <i data-lucide="info" style="width: 16px; height: 16px; color: var(--gold); flex-shrink: 0; margin-top: 2px;"></i>
+        <div style="color: var(--muted-foreground);">
+          <strong style="color: var(--gold); display: block; margin-bottom: 2px;">Sobre o Saldo da Carteira</strong>
+          O saldo abaixo é destinado exclusivamente para a participação nos <strong style="color: var(--foreground);">Desafios de Jogos individuais</strong> e recebimento de prêmios. A taxa de inscrição do <strong style="color: var(--foreground);">Bolão Principal (Cotas)</strong> é paga externamente e é exibida no extrato abaixo apenas para controle e registro histórico, não diminuindo o seu saldo disponível para desafios. Ao final do bolão, o saldo acumulado (incluindo eventuais prêmios do bolão principal) será pago a você manualmente via PIX pelo administrador.
+        </div>
+      </div>
+
       <div class="carteira-container">
         <!-- Left Column: Wallet Summary & Deposit Form -->
         <div class="carteira-left" style="display: flex; flex-direction: column; gap: 24px;">
+
+          <!-- Bolão Final Result Card (Visible only when cup is finished) -->
+          <div class="card" id="carteira-bolao-result-card" style="display: none; background: linear-gradient(135deg, rgba(201, 168, 76, 0.1) 0%, rgba(9, 9, 11, 0.95) 100%); border-color: rgba(201, 168, 76, 0.3);">
+            <div class="sub-title" style="color: var(--gold); display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="trophy" style="width: 16px; height: 16px; color: var(--gold);"></i>
+              Resultado Final - Bolão Principal
+            </div>
+            <div id="carteira-bolao-result-content" style="font-size: 0.85rem; line-height: 1.5; color: var(--muted-foreground);">
+              Carregando resultado do bolão...
+            </div>
+          </div>
 
           <!-- Wallet Card -->
           <div class="card"
@@ -3984,6 +4004,7 @@
     var lastSavedCotaIndex = null;
     var lastSavedIsNew = false;
     var currentArrecadado = 0;
+    var isCupFinished = false;
     var unsavedInputs = {};
     var savedScrollPos = null;
     var userBalance = 0;
@@ -5326,11 +5347,26 @@
             + '</div>';
         }
 
+        var scoreDisplay = '';
+        if (hasResult) {
+          var isFinished = m.result && m.result.status === 'finished';
+          var s1 = m.result.score1;
+          var s2 = m.result.score2;
+          scoreDisplay = '<div style="display:inline-flex; align-items:center; gap:4px; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); border-radius:6px; padding:2px 8px;">'
+            + '<span style="font-family:Oswald,sans-serif; font-weight:700; font-size:1rem; color:#10b981;">' + s1 + '</span>'
+            + '<span style="color:rgba(16,185,129,0.5); font-weight:600; font-size:0.85rem; margin:0 2px;">–</span>'
+            + '<span style="font-family:Oswald,sans-serif; font-weight:700; font-size:1rem; color:#10b981;">' + s2 + '</span>'
+            + '</div>';
+        }
+
         var matchHeaderHtml = '<div style="display:flex; align-items:center; justify-content:space-between; width:100%; border-bottom:1px solid rgba(255,255,255,0.02); padding-bottom:6px; margin-bottom:6px;">'
-          + '<div style="display:flex; align-items:center; gap:8px;">'
+          + '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">'
           + '<span>' + fl(m.team1) + ' ' + tn(m.team1) + '</span>'
-          + '<strong style="color:var(--muted-foreground); margin:0 4px;">x</strong>'
+          + (hasResult
+            ? scoreDisplay
+            : '<strong style="color:var(--muted-foreground); margin:0 4px;">x</strong>')
           + '<span>' + tn(m.team2) + ' ' + fl(m.team2) + '</span>'
+          + (hasResult ? '<span class="badge" style="background:rgba(16,185,129,0.08);color:#34d399;border:1px solid rgba(16,185,129,0.2);font-size:0.65rem;padding:1px 5px;vertical-align:middle;">Encerrado</span>' : '')
           + '</div>'
           + '<span class="adate" style="font-size:0.75rem;">' + dateStr + ' ' + fmtTime(m.datetime) + (m.group ? ' · ' + m.group : '') + '</span>'
           + '</div>';
@@ -5425,25 +5461,77 @@
         var myPred = challengeData.myPredictions && challengeData.myPredictions[matchId];
         var chStatus = (challengeData.statuses && challengeData.statuses[matchId]) || 'open';
         var count = (challengeData.counts && challengeData.counts[matchId]) || 0;
+        var myPrize = challengeData.myPrizes && challengeData.myPrizes[matchId];
+
         if (myPred) {
-          var challengeNoteHtml = '<div style="font-size:0.7rem; color:var(--muted-foreground); display:flex; align-items:flex-start; gap:4px; margin-top:6px; line-height:1.25;">'
-            + '<i data-lucide="alert-triangle" style="width:12px; height:12px; flex-shrink:0; margin-top:1px; color:var(--gold);"></i>'
-            + '<span style="flex:1;">Mínimo de 3 participantes para ser válido. Caso contrário, o valor é estornado. <strong style="color:var(--gold); cursor:pointer; text-decoration:underline;" onclick="openChallengeRulesModal()">Ver Regras de Premiação</strong></span>'
+          // --- Monta cabeçalho do desafio ---
+          var challengeHeader = '<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px; font-size:0.8rem;">'
+            + '<span style="font-weight:600; color:var(--gold); display:flex; align-items:center; gap:4px;">'
+            + '<i data-lucide="zap" style="width:12px; height:12px; display:inline-block; vertical-align:-1px;"></i>'
+            + ' Desafio (' + count + ' inscrito' + (count !== 1 ? 's' : '') + ')'
+            + '</span>'
+            + '<span style="color:var(--muted-foreground); font-size:0.75rem;">Seu palpite: <strong style="color:var(--gold); font-family:Oswald;">' + myPred.score1 + ' – ' + myPred.score2 + '</strong></span>'
             + '</div>';
 
-          if (m.locked || chStatus !== 'open') {
-            challengeHtml = '<div style="margin-top:8px; padding-top:8px; border-top:1.5px dashed rgba(255,255,255,0.05); display:flex; flex-direction:column; gap:4px;">'
-              + '<div style="display:flex; align-items:center; justify-content:space-between; font-size:0.8rem;">'
-              + '<span style="font-weight:600; color:var(--gold); display:flex; align-items:center; gap:4px;"><i data-lucide="zap" style="width:12px; height:12px; display:inline-block; vertical-align:-1px;"></i> Desafio (' + count + ' inscrito' + (count !== 1 ? 's' : '') + '):</span>'
-              + '<div>Palpite: <strong style="color:var(--gold); font-family:Oswald;">' + myPred.score1 + ' – ' + myPred.score2 + '</strong></div>'
-              + '<span class="tag green" style="padding: 1px 5px; font-size: 0.7rem;">Inscrito</span>'
-              + '</div>'
-              + challengeNoteHtml
+          // --- Status badge + resultado ---
+          var statusRowHtml = '';
+
+          if (chStatus === 'cancelled') {
+            // Desafio cancelado por não atingir mínimo de participantes
+            statusRowHtml = '<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-top:4px;">'
+              + '<span class="badge" style="background:rgba(239,68,68,0.08);color:#f87171;border:1px solid rgba(239,68,68,0.25);display:inline-flex;align-items:center;gap:4px;">'
+              + '<i data-lucide="x-circle" style="width:10px;height:10px;"></i>Cancelado'
+              + '</span>'
+              + '<span style="font-size:0.72rem;color:var(--muted-foreground);">Não atingiu 3 participantes — sem cobrança</span>'
               + '</div>';
+
+          } else if (chStatus === 'processed' && myPrize) {
+            // Desafio processado — mostrar prêmio
+            var prizeTypeBadge = '';
+            var prizeColor = '';
+            var prizeLabel = '';
+            if (myPrize.type === 'exact_score') {
+              prizeTypeBadge = '<span class="badge" style="background:rgba(201,168,76,0.12);color:var(--gold);border:1px solid rgba(201,168,76,0.3);font-size:0.65rem;display:inline-flex;align-items:center;gap:3px;"><i data-lucide="star" style="width:9px;height:9px;"></i>Placar exato</span>';
+              prizeColor = 'var(--gold)';
+              prizeLabel = '+' + formatBRL(myPrize.amount);
+            } else if (myPrize.type === 'outcome') {
+              prizeTypeBadge = '<span class="badge" style="background:rgba(16,185,129,0.08);color:#34d399;border:1px solid rgba(16,185,129,0.2);font-size:0.65rem;display:inline-flex;align-items:center;gap:3px;"><i data-lucide="check-circle" style="width:9px;height:9px;"></i>Acertou resultado</span>';
+              prizeColor = '#10b981';
+              prizeLabel = '+' + formatBRL(myPrize.amount);
+            } else if (myPrize.type === 'refund') {
+              prizeTypeBadge = '<span class="badge" style="background:rgba(99,102,241,0.08);color:#a5b4fc;border:1px solid rgba(99,102,241,0.25);font-size:0.65rem;display:inline-flex;align-items:center;gap:3px;"><i data-lucide="rotate-ccw" style="width:9px;height:9px;"></i>Estornado</span>';
+              prizeColor = '#a5b4fc';
+              prizeLabel = formatBRL(myPrize.amount) + ' devolvido';
+            }
+
+            statusRowHtml = '<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-top:4px;">'
+              + '<div style="display:flex; align-items:center; gap:6px;">'
+              + prizeTypeBadge
+              + '</div>'
+              + '<span style="font-family:Oswald,sans-serif; font-weight:700; font-size:0.95rem; color:' + prizeColor + ';">' + prizeLabel + '</span>'
+              + '</div>';
+
+          } else if (chStatus === 'processed' && !myPrize) {
+            // Processado mas sem prêmio para este participante
+            statusRowHtml = '<div style="display:flex; align-items:center; gap:6px; margin-top:4px;">'
+              + '<span class="badge" style="background:rgba(239,68,68,0.08);color:#f87171;border:1px solid rgba(239,68,68,0.25);display:inline-flex;align-items:center;gap:4px;">'
+              + '<i data-lucide="minus-circle" style="width:10px;height:10px;"></i>Sem premiação'
+              + '</span>'
+              + '<span style="font-size:0.72rem;color:var(--muted-foreground);">Nenhum palpite correto neste desafio</span>'
+              + '</div>';
+
+          } else if (m.locked || chStatus !== 'open') {
+            // Jogo encerrado mas desafio ainda aguardando processamento
+            statusRowHtml = '<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-top:4px;">'
+              + '<span class="badge" style="background:rgba(251,191,36,0.08);color:#fbbf24;border:1px solid rgba(251,191,36,0.2);display:inline-flex;align-items:center;gap:4px;">'
+              + '<i data-lucide="clock" style="width:10px;height:10px;"></i>Aguardando resultado'
+              + '</span>'
+              + '<span style="font-size:0.72rem;color:var(--muted-foreground);">' + count + ' participante' + (count !== 1 ? 's' : '') + ' inscritos</span>'
+              + '</div>';
+
           } else {
-            challengeHtml = '<div style="margin-top:8px; padding-top:8px; border-top:1.5px dashed rgba(255,255,255,0.05); display:flex; flex-direction:column; gap:4px;">'
-              + '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:0.8rem;">'
-              + '<span style="font-weight:600; color:var(--gold); display:flex; align-items:center; gap:4px;"><i data-lucide="zap" style="width:12px; height:12px; display:inline-block; vertical-align:-1px;"></i> Desafio (' + count + ' inscrito' + (count !== 1 ? 's' : '') + '):</span>'
+            // Aberto: mostrar badge simples e edição
+            statusRowHtml = '<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-top:4px;">'
               + '<div class="sc">'
               + '<input class="sinput" style="width:34px; height:34px; font-size:1.1rem; border-color:rgba(201,168,76,0.3);" type="number" min="0" max="20" placeholder="–" id="cha1-' + matchId + '" value="' + myPred.score1 + '">'
               + '<span class="ssep" style="font-size:0.85rem;">:</span>'
@@ -5452,10 +5540,23 @@
               + '<button class="btn-save" style="font-size:0.75rem; padding:5px 10px; background:var(--gold); color:#000; border-color:var(--gold);" onclick="enterChallenge(\'' + matchId + '\')">'
               + '<i data-lucide="edit-3" style="width:10px; height:10px; margin-right:3px; display:inline-block; vertical-align:-1px"></i>Atualizar'
               + '</button>'
-              + '</div>'
-              + challengeNoteHtml
               + '</div>';
           }
+
+          // --- Nota de mínimo (só para desafios ainda abertos ou aguardando) ---
+          var challengeNoteHtml = '';
+          if (chStatus === 'open' || (m.locked && chStatus !== 'processed' && chStatus !== 'cancelled')) {
+            challengeNoteHtml = '<div style="font-size:0.7rem; color:var(--muted-foreground); display:flex; align-items:flex-start; gap:4px; margin-top:6px; line-height:1.25;">'
+              + '<i data-lucide="alert-triangle" style="width:12px; height:12px; flex-shrink:0; margin-top:1px; color:var(--gold);"></i>'
+              + '<span style="flex:1;">Mínimo de 3 participantes para ser válido. Caso contrário, o valor é estornado. <strong style="color:var(--gold); cursor:pointer; text-decoration:underline;" onclick="openChallengeRulesModal()">Ver Regras de Premiação</strong></span>'
+              + '</div>';
+          }
+
+          challengeHtml = '<div style="margin-top:8px; padding-top:8px; border-top:1.5px dashed rgba(255,255,255,0.05); display:flex; flex-direction:column; gap:4px;">'
+            + challengeHeader
+            + statusRowHtml
+            + challengeNoteHtml
+            + '</div>';
         }
 
         var warningHtml = '';
@@ -6632,6 +6733,7 @@
       allMatches = Array.isArray(results[1]) ? results[1] : [];
       var ranking = Array.isArray(results[2]) ? results[2] : [];
       var cupFinishedObj = results[3] || {};
+      isCupFinished = (cupFinishedObj.value === 'true');
       loadRanking();
 
       // Auto-trigger podium if cup is officially finalized and not shown this session
@@ -7792,7 +7894,12 @@
               var amountStyle = '';
               var amountText = '';
 
-              if (tx.amount > 0) {
+              if (tx.type === 'bolao_entry') {
+                // Historical record only — not a real wallet debit
+                badge = '<span class="badge" style="background: rgba(201, 168, 76, 0.08); color: var(--gold); border: 1px solid rgba(201, 168, 76, 0.25); display:inline-flex; align-items:center; gap:2px;"><i data-lucide="ticket" style="width:10px;height:10px;"></i>Inscrição</span>';
+                amountStyle = 'color: var(--gold); font-weight: 600; text-align: right; font-family: \'Oswald\';';
+                amountText = formatBRL(tx.amount);
+              } else if (tx.amount > 0) {
                 badge = '<span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); display:inline-flex; align-items:center; gap:2px;"><i data-lucide="arrow-up-right" style="width:10px;height:10px;"></i>Entrada</span>';
                 amountStyle = 'color: #10b981; font-weight: 600; text-align: right; font-family: \'Oswald\';';
                 amountText = '+' + formatBRL(tx.amount);
@@ -7802,14 +7909,90 @@
                 amountText = formatBRL(tx.amount);
               }
 
+              var histNote = tx.type === 'bolao_entry'
+                ? '<br><span style="font-size:0.68rem;color:var(--muted-foreground);opacity:0.65;">* Registro histórico — pago externamente via PIX</span>'
+                : '';
+
               return '<tr>'
                 + '<td style="white-space:nowrap;color:var(--muted-foreground);">' + dateStr + '</td>'
                 + '<td>' + badge + '</td>'
-                + '<td>' + (tx.description || 'Movimentação') + '</td>'
+                + '<td>' + (tx.description || 'Movimentação') + histNote + '</td>'
                 + '<td style="' + amountStyle + '">' + amountText + '</td>'
                 + '</tr>';
             }).join('');
           }
+        }
+
+        // --- Bolão Final Result Card ---
+        var resultCard = document.getElementById('carteira-bolao-result-card');
+        var resultContent = document.getElementById('carteira-bolao-result-content');
+        if (isCupFinished && resultCard && resultContent) {
+          resultCard.style.display = '';
+          apiFetch('GET', '/api/ranking').then(function (ranking) {
+            if (!Array.isArray(ranking) || !session) return;
+            var myPos = -1;
+            for (var ri = 0; ri < ranking.length; ri++) {
+              if (ranking[ri].id === session.id || ranking[ri].name === session.name) {
+                myPos = ri;
+                break;
+              }
+            }
+            var fmt = function (v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); };
+            var prize = 0;
+            var medalHtml = '';
+            var posLabel = '';
+            var msgHtml = '';
+
+            if (myPos === 0) {
+              prize = currentArrecadado * 0.55;
+              medalHtml = '<span style="font-size:1.6rem;">🥇</span>';
+              posLabel = '1º Lugar';
+            } else if (myPos === 1) {
+              prize = currentArrecadado * 0.25;
+              medalHtml = '<span style="font-size:1.6rem;">🥈</span>';
+              posLabel = '2º Lugar';
+            } else if (myPos === 2) {
+              prize = currentArrecadado * 0.10;
+              medalHtml = '<span style="font-size:1.6rem;">🥉</span>';
+              posLabel = '3º Lugar';
+            } else if (myPos >= 3) {
+              posLabel = (myPos + 1) + 'º Lugar';
+            }
+
+            var pts = myPos >= 0 ? ranking[myPos].points : 0;
+
+            if (prize > 0) {
+              msgHtml = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">'
+                + medalHtml
+                + '<div>'
+                + '<div style="font-size:1.05rem;font-weight:700;color:var(--gold);font-family:Oswald,sans-serif;">' + posLabel + '</div>'
+                + '<div style="font-size:0.78rem;color:var(--muted-foreground);">' + pts + ' pontos</div>'
+                + '</div></div>'
+                + '<div style="padding:12px;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:6px;margin-bottom:10px;">'
+                + '<div style="font-size:0.72rem;color:var(--muted-foreground);text-transform:uppercase;margin-bottom:2px;">Prêmio do Bolão</div>'
+                + '<div style="font-size:1.35rem;font-weight:700;color:#10b981;font-family:Oswald,sans-serif;">' + fmt(prize) + '</div>'
+                + '</div>'
+                + '<div style="font-size:0.75rem;color:var(--muted-foreground);display:flex;gap:6px;align-items:flex-start;">'
+                + '<i data-lucide="info" style="width:13px;height:13px;flex-shrink:0;margin-top:1px;color:var(--gold);"></i>'
+                + '<span>O prêmio será somado ao seu saldo e pago manualmente pelo administrador via PIX. Aguarde o contato.</span>'
+                + '</div>';
+            } else if (myPos >= 0) {
+              msgHtml = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">'
+                + '<span style="font-size:1.4rem;">🏆</span>'
+                + '<div>'
+                + '<div style="font-size:1rem;font-weight:700;color:var(--foreground);font-family:Oswald,sans-serif;">' + posLabel + '</div>'
+                + '<div style="font-size:0.78rem;color:var(--muted-foreground);">' + pts + ' pontos</div>'
+                + '</div></div>'
+                + '<div style="font-size:0.8rem;color:var(--muted-foreground);">Parabéns por ter participado! O prêmio é distribuído aos 3 primeiros colocados.</div>';
+            } else {
+              msgHtml = '<div style="color:var(--muted-foreground);font-size:0.82rem;">Resultado não encontrado para o seu usuário.</div>';
+            }
+
+            resultContent.innerHTML = msgHtml;
+            lucide.createIcons();
+          });
+        } else if (resultCard) {
+          resultCard.style.display = 'none';
         }
       });
 
