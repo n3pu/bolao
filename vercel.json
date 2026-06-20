@@ -6,12 +6,18 @@
     { "src": "public/logo.png", "use": "@vercel/static" },
     { "src": "public/badge.png", "use": "@vercel/static" },
     { "src": "public/manifest.json", "use": "@vercel/static" },
-    { "src": "public/sw.js", "use": "@vercel/static" }
+    { "src": "public/sw.js", "use": "@vercel/static" },
+    { "src": "public/primeiro_lugar.gif", "use": "@vercel/static" },
+    { "src": "public/segundo_lugar.gif", "use": "@vercel/static" },
+    { "src": "public/terceiro_lugar.gif", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/index.js" },
     { "src": "/logo.png", "dest": "/public/logo.png" },
     { "src": "/badge.png", "dest": "/public/badge.png" },
+    { "src": "/primeiro_lugar.gif", "dest": "/public/primeiro_lugar.gif" },
+    { "src": "/segundo_lugar.gif", "dest": "/public/segundo_lugar.gif" },
+    { "src": "/terceiro_lugar.gif", "dest": "/public/terceiro_lugar.gif" },
     { "src": "/manifest.json", "dest": "/public/manifest.json" },
     { "src": "/sw.js", "dest": "/public/sw.js" },
     { "src": "/(.*)", "dest": "/public/index.html" }

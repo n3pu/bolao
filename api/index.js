@@ -157,6 +157,8 @@ async function initDB() {
         .catch(err => console.log('status col:', err.message));
       await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS live_link TEXT;`)
         .catch(err => console.log('live_link col:', err.message));
+      await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS match_datetime TEXT;`)
+        .catch(err => console.log('match_datetime col:', err.message));
       await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'warning';`)
         .catch(err => console.log('banner type col:', err.message));
       
@@ -180,6 +182,9 @@ async function initDB() {
       );
       await pool.query(
         `INSERT INTO config (key, value) VALUES ('valor_cota', '25') ON CONFLICT (key) DO NOTHING`
+      );
+      await pool.query(
+        `INSERT INTO config (key, value) VALUES ('countdown', '{"title":"","body":"","target":"","active":false}') ON CONFLICT (key) DO NOTHING`
       );
     } catch (err) {
       initDBPromise = null; // reset so next request can retry
@@ -486,51 +491,117 @@ module.exports = async function handler(req, res) {
     // GET /matches
     if (url === '/matches' && method === 'GET') {
       const matches = loadMatches();
-      const { rows } = await pool.query('SELECT match_id, score1, score2, penalties_winner, status, live_link FROM results');
+      const { rows } = await pool.query('SELECT match_id, score1, score2, penalties_winner, status, live_link, match_datetime FROM results');
       const resMap = {};
-      rows.forEach(r => { resMap[r.match_id] = { score1: r.score1, score2: r.score2, penalties_winner: r.penalties_winner, status: r.status, live_link: r.live_link }; });
-      return res.status(200).json(matches.map(m => ({
-        ...m,
-        result: resMap[m.id] || null,
-        locked: isLocked(m) || (resMap[m.id] && resMap[m.id].score1 !== null && resMap[m.id].score2 !== null)
-      })));
+      rows.forEach(r => {
+        resMap[r.match_id] = {
+          score1: r.score1,
+          score2: r.score2,
+          penalties_winner: r.penalties_winner,
+          status: r.status,
+          live_link: r.live_link,
+          match_datetime: r.match_datetime
+        };
+      });
+      const mapped = matches.map(m => {
+        const r = resMap[m.id];
+        const datetime = (r && r.match_datetime) ? r.match_datetime : m.datetime;
+        const mappedMatch = {
+          ...m,
+          datetime: datetime,
+          result: r || null
+        };
+        return {
+          ...mappedMatch,
+          locked: isLocked(mappedMatch) || (r && r.score1 !== null && r.score2 !== null)
+        };
+      });
+      // Sort by datetime chronologically (both date and time combined)
+      mapped.sort((a, b) => (a.datetime || '') < (b.datetime || '') ? -1 : 1);
+      return res.status(200).json(mapped);
     }
 
-    // - PUT /matches/:id/result
+        // - PUT /matches/:id/result
     const matchResult = url.match(/^\/matches\/([^/]+)\/result$/);
     if (matchResult && method === 'PUT') {
       const adminPin = await getAdminPin();
       if (String(req.headers['x-admin-pin']) !== adminPin)
         return res.status(401).json({ error: 'PIN de admin incorreto' });
       const id = matchResult[1];
-      const { score1, score2, penalties_winner, status, live_link } = body;
+      const { score1, score2, penalties_winner, status, live_link, match_datetime } = body;
 
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
 
-        if (score1 === null || score1 === undefined) {
+        if (score1 === null && score2 === null) {
           await autoRollbackChallenge(client, id);
-          await client.query('DELETE FROM results WHERE match_id=$1', [id]);
+          
+          // Check if there is a match_datetime override
+          const rCheck = await client.query('SELECT match_datetime FROM results WHERE match_id = $1', [id]);
+          const hasTimeOverride = rCheck.rows.length > 0 && rCheck.rows[0].match_datetime;
+          
+          if (hasTimeOverride) {
+            // Keep the row but clear result fields
+            await client.query(
+              `UPDATE results SET score1 = NULL, score2 = NULL, penalties_winner = NULL, status = NULL, live_link = NULL WHERE match_id = $1`,
+              [id]
+            );
+          } else {
+            // Delete the row entirely
+            await client.query('DELETE FROM results WHERE match_id = $1', [id]);
+          }
+          
           const matches = loadMatches();
           const m = matches.find(x => String(x.id) === String(id));
           if (m && (String(m.id) === '104' || m.round === 'Final')) {
             await client.query("DELETE FROM config WHERE key='champion'");
           }
         } else {
-          if (status === 'finished') {
+          if (score1 === null || score1 === undefined) {
+            await autoRollbackChallenge(client, id);
+          } else if (status === 'finished') {
             await autoRollbackChallenge(client, id);
           }
 
-          await client.query(
-            `INSERT INTO results (match_id,score1,score2,penalties_winner,status,live_link) VALUES ($1,$2,$3,$4,$5,$6)
-             ON CONFLICT (match_id) DO UPDATE SET score1=$2,score2=$3,penalties_winner=$4,status=$5,live_link=$6`,
-            [id, score1, score2, penalties_winner || null, status || 'finished', live_link || null]
-          );
+          const updates = [];
+          const values = [];
+          let paramIdx = 1;
+
+          if (score1 !== undefined) {
+            updates.push(`score1 = $${paramIdx++}`);
+            values.push(score1);
+          }
+          if (score2 !== undefined) {
+            updates.push(`score2 = $${paramIdx++}`);
+            values.push(score2);
+          }
+          if (penalties_winner !== undefined) {
+            updates.push(`penalties_winner = $${paramIdx++}`);
+            values.push(penalties_winner);
+          }
+          if (status !== undefined) {
+            updates.push(`status = $${paramIdx++}`);
+            values.push(status);
+          }
+          if (live_link !== undefined) {
+            updates.push(`live_link = $${paramIdx++}`);
+            values.push(live_link);
+          }
+          if (match_datetime !== undefined) {
+            updates.push(`match_datetime = $${paramIdx++}`);
+            values.push(match_datetime);
+          }
+
+          if (updates.length > 0) {
+            await client.query(`INSERT INTO results (match_id) VALUES ($1) ON CONFLICT (match_id) DO NOTHING`, [id]);
+            values.push(id);
+            await client.query(`UPDATE results SET ${updates.join(', ')} WHERE match_id = $${paramIdx}`, values);
+          }
 
           const matches = loadMatches();
           const m = matches.find(x => String(x.id) === String(id));
-          if (m && (String(m.id) === '104' || m.round === 'Final')) {
+          if (m && (String(m.id) === '104' || m.round === 'Final') && score1 !== undefined && score1 !== null) {
             let champion = null;
             if (score1 > score2) champion = m.team1;
             else if (score2 > score1) champion = m.team2;
@@ -547,7 +618,7 @@ module.exports = async function handler(req, res) {
             }
           }
 
-          if (status === 'finished') {
+          if (status === 'finished' && score1 !== undefined && score1 !== null) {
             await autoProcessChallenge(client, id);
           }
         }
@@ -758,8 +829,12 @@ module.exports = async function handler(req, res) {
       const match = loadMatches().find(m => m.id === String(matchId));
       if (!match) return res.status(404).json({ error: 'Partida não encontrada' });
 
-      const resCheck = await pool.query('SELECT score1, score2 FROM results WHERE match_id = $1', [String(matchId)]);
+      const resCheck = await pool.query('SELECT score1, score2, match_datetime FROM results WHERE match_id = $1', [String(matchId)]);
       const scoreDefined = resCheck.rows.length > 0 && resCheck.rows[0].score1 !== null && resCheck.rows[0].score2 !== null;
+
+      if (resCheck.rows.length && resCheck.rows[0].match_datetime) {
+        match.datetime = resCheck.rows[0].match_datetime;
+      }
 
       if (isLocked(match) || scoreDefined) {
         return res.status(403).json({ error: 'Os palpites para este jogo já foram encerrados' });
@@ -777,16 +852,25 @@ module.exports = async function handler(req, res) {
     // GET /ranking
     if (url === '/ranking' && method === 'GET') {
       const parts   = await pool.query('SELECT id, name, cotas FROM participants WHERE approved=TRUE ORDER BY name');
-      const bets    = await pool.query('SELECT participant_id, match_id, score1, score2 FROM bets');
-      const results = await pool.query('SELECT match_id, score1, score2 FROM results');
+      const bets    = await pool.query('SELECT participant_id, match_id, score1, score2, created_at FROM bets');
+      const results = await pool.query('SELECT match_id, score1, score2, match_datetime FROM results');
       const resMap  = {};
-      results.rows.forEach(r => { resMap[r.match_id] = r; });
+      results.rows.forEach(r => {
+        resMap[r.match_id] = {
+          score1: r.score1,
+          score2: r.score2,
+          match_datetime: r.match_datetime
+        };
+      });
       const ranking = parts.rows.map(p => {
         // Only count bets for matches on or after Brazil's first game (2026-06-20T01:00:00Z)
         const myBets = bets.rows.filter(b => {
           if (b.participant_id !== p.id) return false;
           const m = loadMatches().find(x => String(x.id) === String(b.match_id));
-          return m && m.datetime >= '2026-06-20T01:00:00Z';
+          if (!m) return false;
+          const r = resMap[b.match_id];
+          const datetime = (r && r.match_datetime) ? r.match_datetime : m.datetime;
+          return datetime >= '2026-06-20T01:00:00Z';
         });
         let points = 0, exact = 0, outcome = 0;
         myBets.forEach(b => {
@@ -794,9 +878,21 @@ module.exports = async function handler(req, res) {
           const pts = r ? calcScore(b.score1, b.score2, r.score1, r.score2) : 0;
           points += pts; if (pts === 3) exact++; if (pts === 1) outcome++;
         });
-        return { id: p.id, name: p.name, cotas: p.cotas, points, exact, outcome, betted: myBets.length };
+        let lastBetTime = Infinity;
+        if (myBets.length > 0) {
+          const times = myBets.map(b => b.created_at ? new Date(b.created_at).getTime() : 0).filter(t => t > 0);
+          if (times.length > 0) {
+            lastBetTime = Math.max(...times);
+          }
+        }
+        return { id: p.id, name: p.name, cotas: p.cotas, points, exact, outcome, betted: myBets.length, lastBetTime };
       });
-      ranking.sort((a, b) => b.points - a.points || b.exact - a.exact);
+      ranking.sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        if (b.exact !== a.exact) return b.exact - a.exact;
+        if (a.lastBetTime === b.lastBetTime) return 0;
+        return a.lastBetTime < b.lastBetTime ? -1 : 1;
+      });
       return res.status(200).json(ranking);
     }
 
@@ -911,6 +1007,40 @@ module.exports = async function handler(req, res) {
           }
         }
       }
+      return res.status(200).json({ ok: true });
+    }
+
+    // GET /config/countdown
+    if (url === '/config/countdown' && method === 'GET') {
+      const r = await pool.query(`SELECT value FROM config WHERE key = 'countdown'`);
+      const val = r.rows[0]?.value;
+      if (val) {
+        try {
+          return res.status(200).json(JSON.parse(val));
+        } catch (e) {
+          // If JSON parse fails, return default structure
+        }
+      }
+      return res.status(200).json({ active: false, title: '', body: '', target: '' });
+    }
+
+    // PUT /config/countdown
+    if (url === '/config/countdown' && method === 'PUT') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+      const { active, title, body: cBody, target } = body;
+      const jsonValue = JSON.stringify({
+        active: !!active,
+        title: String(title || ''),
+        body: String(cBody || ''),
+        target: String(target || '')
+      });
+      await pool.query(
+        `INSERT INTO config (key, value) VALUES ('countdown', $1)
+         ON CONFLICT (key) DO UPDATE SET value=$1`,
+        [jsonValue]
+      );
       return res.status(200).json({ ok: true });
     }
 
@@ -1195,8 +1325,12 @@ module.exports = async function handler(req, res) {
       const match = matches.find(m => String(m.id) === String(matchId));
       if (!match) return res.status(404).json({ error: 'Partida não encontrada' });
 
-      const resCheck = await pool.query('SELECT score1, score2 FROM results WHERE match_id = $1', [String(matchId)]);
+      const resCheck = await pool.query('SELECT score1, score2, match_datetime FROM results WHERE match_id = $1', [String(matchId)]);
       const scoreDefined = resCheck.rows.length > 0 && resCheck.rows[0].score1 !== null && resCheck.rows[0].score2 !== null;
+
+      if (resCheck.rows.length && resCheck.rows[0].match_datetime) {
+        match.datetime = resCheck.rows[0].match_datetime;
+      }
 
       if (isLocked(match) || scoreDefined) return res.status(403).json({ error: 'Os palpites para esta partida já foram encerrados' });
 
