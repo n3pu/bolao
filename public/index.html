@@ -2387,17 +2387,72 @@
       gap: 24px;
       align-items: start;
     }
+
+    /* Toggle Switch Style */
+    .switch-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .switch-label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--foreground);
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 22px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--border);
+      transition: .3s;
+      border-radius: 34px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    input:checked + .slider {
+      background-color: #10b981;
+    }
+    input:focus + .slider {
+      box-shadow: 0 0 1px #10b981;
+    }
+    input:checked + .slider:before {
+      transform: translateX(22px);
+    }
   </style>
 </head>
 
 <body>
 
-  <div class="top-countdown-banner" id="countdown-banner">
+  <div class="top-countdown-banner" id="countdown-banner" style="display: none;">
     <div class="banner-content">
       <i data-lucide="zap" class="banner-icon"></i>
-      <span>A ESTREIA DO BOLÃO COMEÇA EM:</span>
+      <span id="countdown-title-banner">A ESTREIA DO BOLÃO COMEÇA EM:</span>
       <span id="countdown-timer-banner" class="banner-timer">Carregando...</span>
-      <span style="font-size:0.72rem;opacity:0.8;margin-left:4px;">(Apostas anteriores não contam para o Ranking)</span>
+      <span id="countdown-body-banner" style="font-size:0.72rem;opacity:0.8;margin-left:4px;">(Apostas anteriores não contam para o Ranking)</span>
     </div>
   </div>
 
@@ -3121,6 +3176,43 @@
           <button class="btn-add" id="btn-send-push" onclick="sendPushNotification()"
             style="background:#2563eb; border-color:#3b82f6; color:#fff; align-self: flex-start; display:flex; align-items:center; gap:6px; margin:0;">
             <i data-lucide="bell-ring"></i> Enviar para Todos
+          </button>
+        </div>
+      </div>
+
+      <!-- CRONÔMETRO DE TOPO (COUNTDOWN) -->
+      <div class="card" style="border-color: rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.01);">
+        <div class="sub-title" style="color: #f59e0b; display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+          <i data-lucide="timer" style="width:14px; height:14px;"></i> Cronômetro do Topo (Banner)
+        </div>
+        <div style="font-size: 0.8rem; color: var(--muted-foreground); margin-bottom: 14px;">
+          Configure um cronômetro com título e corpo personalizados no banner do topo do site.
+        </div>
+        <div class="form-row" style="flex-direction: column; align-items: stretch; gap: 12px;">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <label style="font-size:0.75rem; color:var(--muted-foreground); font-weight:600;">Título do Cronômetro</label>
+            <input class="inp" id="admin-countdown-title" placeholder="Ex: A ESTREIA DO BOLÃO COMEÇA EM:" style="width:100%">
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <label style="font-size:0.75rem; color:var(--muted-foreground); font-weight:600;">Texto Secundário (Corpo)</label>
+            <input class="inp" id="admin-countdown-body" placeholder="Ex: (Apostas anteriores não contam para o Ranking)" style="width:100%">
+          </div>
+          <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end;">
+            <div style="display:flex; flex-direction:column; gap:4px; flex:1; min-width:200px;">
+              <label style="font-size:0.75rem; color:var(--muted-foreground); font-weight:600;">Data e Hora Alvo (Local)</label>
+              <input class="inp" id="admin-countdown-target" type="datetime-local" style="width:100%">
+            </div>
+            <div class="switch-container" style="height:38px; display:flex; align-items:center; gap:8px;">
+              <label class="switch">
+                <input type="checkbox" id="admin-countdown-active">
+                <span class="slider"></span>
+              </label>
+              <span class="switch-label">Exibir Banner Ativo</span>
+            </div>
+          </div>
+          <button class="btn-add" onclick="saveCountdownConfig()"
+            style="background: #d97706; border-color: #f59e0b; color: #fff; align-self: flex-start; display:flex; align-items:center; gap:6px; margin:0;">
+            <i data-lucide="save" style="width:14px;height:14px;"></i> Salvar Configuração
           </button>
         </div>
       </div>
@@ -4014,6 +4106,7 @@
     var userBalance = 0;
     var challengeData = { counts: {}, statuses: {}, myPredictions: {} };
     var lastAdminChallengesData = null;
+    var countdownConfig = { active: false, title: '', body: '', target: '' };
 
     function captureUnsavedInputs() {
       var activePage = document.querySelector('.page.on');
@@ -5862,6 +5955,35 @@
       loadAdminTransactions();
       loadAdminChallenges();
       loadAdminWallets();
+
+      // 7. Load countdown config for admin panel
+      apiFetch('GET', '/api/config/countdown').then(function (r) {
+        if (r && !r.error) {
+          var titleInp = document.getElementById('admin-countdown-title');
+          var bodyInp = document.getElementById('admin-countdown-body');
+          var targetInp = document.getElementById('admin-countdown-target');
+          var activeInp = document.getElementById('admin-countdown-active');
+          
+          if (titleInp) titleInp.value = r.title || '';
+          if (bodyInp) bodyInp.value = r.body || '';
+          
+          if (targetInp) {
+            if (r.target) {
+              var d = new Date(r.target);
+              if (!isNaN(d.getTime())) {
+                var tzOffset = d.getTimezoneOffset() * 60000;
+                var localISOTime = (new Date(d.getTime() - tzOffset)).toISOString().slice(0, 16);
+                targetInp.value = localISOTime;
+              } else {
+                targetInp.value = '';
+              }
+            } else {
+              targetInp.value = '';
+            }
+          }
+          if (activeInp) activeInp.checked = !!r.active;
+        }
+      });
     }
 
     function dicebearUrl(name) {
@@ -6110,23 +6232,110 @@
       });
     }
 
+    function saveCountdownConfig() {
+      if (!session || session.type !== 'admin') return;
+      var titleInp = document.getElementById('admin-countdown-title');
+      var bodyInp = document.getElementById('admin-countdown-body');
+      var targetInp = document.getElementById('admin-countdown-target');
+      var activeInp = document.getElementById('admin-countdown-active');
+      
+      if (!titleInp || !bodyInp || !targetInp || !activeInp) return;
+      
+      var targetISO = '';
+      if (targetInp.value) {
+        var localDate = new Date(targetInp.value);
+        if (!isNaN(localDate.getTime())) {
+          targetISO = localDate.toISOString();
+        }
+      }
+      
+      var payload = {
+        title: titleInp.value.trim(),
+        body: bodyInp.value.trim(),
+        target: targetISO,
+        active: activeInp.checked
+      };
+      
+      var btn = document.querySelector('button[onclick="saveCountdownConfig()"]');
+      var origHtml = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i>Salvando...';
+        lucide.createIcons();
+      }
+      
+      apiFetch('PUT', '/api/config/countdown', payload, { 'x-admin-pin': session.pin }).then(function (r) {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = origHtml;
+          lucide.createIcons();
+        }
+        if (r && r.error) {
+          toast(r.error, 'err');
+          return;
+        }
+        toast('Configuração do cronômetro salva!');
+        countdownConfig = payload;
+        updateCountdown();
+      });
+    }
+
     function updateCountdown() {
-      var target = new Date('2026-06-20T01:00:00Z');
-      var now = new Date();
-      var diff = target - now;
       var banner = document.getElementById('countdown-banner');
       if (!banner) return;
-      if (diff <= 0) {
+      
+      if (!countdownConfig || !countdownConfig.active) {
+        banner.style.display = 'none';
+        return;
+      }
+      
+      banner.style.display = 'block';
+      
+      var targetStr = countdownConfig.target;
+      if (!targetStr) {
         banner.innerHTML = '<div class="banner-content">'
-          + '<i data-lucide="party-popper" class="banner-icon" style="color:#10b981; animation: bounce 1.5s infinite;"></i>'
-          + '<span style="color:#10b981; font-weight:700; letter-spacing: 0.5px;">🎉 AS APOSTAS DO GRUPO COMEÇARAM!</span>'
-          + '<span style="color:var(--foreground); font-weight:600;">O sistema agora está contabilizando os pontos normalmente.</span>'
+          + '<i data-lucide="zap" class="banner-icon"></i>'
+          + '<span>' + (countdownConfig.title || 'A ESTREIA DO BOLÃO COMEÇA EM:') + '</span>'
+          + '<span style="font-size:0.72rem;opacity:0.8;margin-left:4px;">' + (countdownConfig.body || '') + '</span>'
           + '</div>';
         lucide.createIcons();
         return;
       }
+      
+      var target = new Date(targetStr);
+      var now = new Date();
+      var diff = target - now;
+      
+      if (diff <= 0) {
+        banner.innerHTML = '<div class="banner-content">'
+          + '<i data-lucide="party-popper" class="banner-icon" style="color:#10b981; animation: bounce 1.5s infinite;"></i>'
+          + '<span style="color:#10b981; font-weight:700; letter-spacing: 0.5px;">' + (countdownConfig.title || '🎉 AS APOSTAS DO GRUPO COMEÇARAM!') + '</span>'
+          + '<span style="color:var(--foreground); font-weight:600; margin-left:4px;">' + (countdownConfig.body || 'O sistema agora está contabilizando os pontos normalmente.') + '</span>'
+          + '</div>';
+        lucide.createIcons();
+        return;
+      }
+      
+      var titleEl = document.getElementById('countdown-title-banner');
       var timerEl = document.getElementById('countdown-timer-banner');
-      if (!timerEl) return;
+      var bodyEl = document.getElementById('countdown-body-banner');
+      
+      if (!titleEl || !timerEl || !bodyEl) {
+        banner.innerHTML = '<div class="banner-content">'
+          + '<i data-lucide="zap" class="banner-icon"></i>'
+          + '<span id="countdown-title-banner"></span> '
+          + '<span id="countdown-timer-banner" class="banner-timer">Carregando...</span>'
+          + ' <span id="countdown-body-banner" style="font-size:0.72rem;opacity:0.8;margin-left:4px;"></span>'
+          + '</div>';
+        lucide.createIcons();
+        titleEl = document.getElementById('countdown-title-banner');
+        timerEl = document.getElementById('countdown-timer-banner');
+        bodyEl = document.getElementById('countdown-body-banner');
+      }
+      
+      if (titleEl) titleEl.textContent = countdownConfig.title || 'A ESTREIA DO BOLÃO COMEÇA EM:';
+      if (bodyEl) bodyEl.textContent = countdownConfig.body || '(Apostas anteriores não contam para o Ranking)';
+      
       var days = Math.floor(diff / (1000 * 60 * 60 * 24));
       var hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       var mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -6138,7 +6347,7 @@
       parts.push(String(mins).padStart(2, '0') + 'm');
       parts.push(String(secs).padStart(2, '0') + 's');
 
-      timerEl.innerHTML = parts.join(' ');
+      if (timerEl) timerEl.textContent = parts.join(' ');
     }
 
     var confettiInterval = null;
@@ -6756,8 +6965,13 @@
     restoreSession();
     updateHeader();
     fetchArrecadado();
-    updateCountdown();
-    setInterval(updateCountdown, 1000);
+    apiFetch('GET', '/api/config/countdown').then(function (r) {
+      if (r && !r.error) {
+        countdownConfig = r;
+      }
+      updateCountdown();
+      setInterval(updateCountdown, 1000);
+    });
 
     // Pre-load countries, matches, ranking and cup status so filters work on first render and podium checks can run
     Promise.all([
