@@ -872,28 +872,65 @@ module.exports = async function handler(req, res) {
           const datetime = (r && r.match_datetime) ? r.match_datetime : m.datetime;
           return datetime >= '2026-06-20T01:00:00Z';
         });
-        let points = 0, exact = 0, outcome = 0;
+        
+        // Group bets by match_id
+        const betsByMatch = {};
         myBets.forEach(b => {
-          const r = resMap[b.match_id];
-          const pts = r ? calcScore(b.score1, b.score2, r.score1, r.score2) : 0;
-          points += pts; if (pts === 3) exact++; if (pts === 1) outcome++;
-        });
-        let lastBetTime = Infinity;
-        if (myBets.length > 0) {
-          const times = myBets.map(b => b.created_at ? new Date(b.created_at).getTime() : 0).filter(t => t > 0);
-          if (times.length > 0) {
-            lastBetTime = Math.max(...times);
+          if (!betsByMatch[b.match_id]) {
+            betsByMatch[b.match_id] = [];
           }
-        }
-        return { id: p.id, name: p.name, cotas: p.cotas, points, exact, outcome, betted: myBets.length, lastBetTime };
+          betsByMatch[b.match_id].push(b);
+        });
+        let points = 0, exact = 0, outcome = 0;
+        let lastBetTime = null;
+
+        Object.keys(betsByMatch).forEach(matchId => {
+          const matchBets = betsByMatch[matchId];
+          const r = resMap[matchId];
+          
+          let maxPts = 0;
+          matchBets.forEach(b => {
+            const pts = r ? calcScore(b.score1, b.score2, r.score1, r.score2) : 0;
+            if (pts > maxPts) {
+              maxPts = pts;
+            }
+            if (b.score1 !== null && b.score2 !== null) {
+              const t = b.created_at ? new Date(b.created_at).getTime() : 0;
+              if (t > 0) {
+                if (lastBetTime === null || t > lastBetTime) {
+                  lastBetTime = t;
+                }
+              }
+            }
+          });
+          
+          points += maxPts;
+          if (maxPts === 3) exact++;
+          else if (maxPts === 1) outcome++;
+        });
+
+        return { 
+          id: p.id, 
+          name: p.name, 
+          cotas: p.cotas, 
+          points, 
+          exact, 
+          outcome, 
+          betted: myBets.length, 
+          lastBetTime 
+        };
       });
+
       ranking.sort((a, b) => {
         if (b.points !== a.points) return b.points - a.points;
         if (b.exact !== a.exact) return b.exact - a.exact;
-        if (a.lastBetTime === b.lastBetTime) return 0;
-        return a.lastBetTime < b.lastBetTime ? -1 : 1;
+        const timeA = a.lastBetTime === null ? Infinity : a.lastBetTime;
+        const timeB = b.lastBetTime === null ? Infinity : b.lastBetTime;
+        return timeA - timeB;
       });
-      return res.status(200).json(ranking);
+
+      const cleanedRanking = ranking.map(({ lastBetTime, ...rest }) => rest);
+      return res.status(200).json(cleanedRanking);
     }
 
     // POST /auth/participant

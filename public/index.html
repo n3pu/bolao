@@ -4867,15 +4867,39 @@
 
           var betsRowHtml = '';
           if (isAdmin) {
+            var bestBetsMap = {};
+            matchBets.forEach(function (b) {
+              var pts = hasResult ? calcScore(b, m.result, m) : 0;
+              if (!bestBetsMap[b.participantId] || pts > bestBetsMap[b.participantId].pts) {
+                bestBetsMap[b.participantId] = { cotaIndex: b.cotaIndex, pts: pts };
+              }
+            });
+
             var betsHtml = matchBets.map(function (b) {
               var p = allParticipants.find(function (x) { return x.id === b.participantId; });
               if (!p) return '';
               var pts = hasResult ? calcScore(b, m.result, m) : null;
+              var isBest = false;
+              if (pts !== null) {
+                var bestInfo = bestBetsMap[b.participantId];
+                isBest = (bestInfo && bestInfo.pts > 0 && b.cotaIndex === bestInfo.cotaIndex);
+              }
               var scoreText = (b.score1 !== null && b.score2 !== null) ? (b.score1 + '–' + b.score2) : '✓';
               var pCotas = p.cotas !== undefined ? p.cotas : 1;
               var cotaSuffix = (pCotas > 1 || b.cotaIndex > 0) ? ' (Cota ' + (b.cotaIndex + 1) + ')' : '';
+              
+              var ptsBadge = '';
+              if (pts !== null) {
+                if (isBest) {
+                  ptsBadge = '<span class="bpts">' + pts + 'pt</span>';
+                } else if (pts > 0) {
+                  ptsBadge = '<span style="text-decoration: line-through; opacity: 0.5; color: var(--muted-foreground); border: 1px solid var(--border); border-radius: 3px; padding: 1px 4px; font-size: 0.65rem; font-weight: 600; margin-left: 4px;">' + pts + 'pt</span>';
+                } else {
+                  ptsBadge = '<span style="opacity: 0.5; color: var(--muted-foreground); border: 1px solid var(--border); border-radius: 3px; padding: 1px 4px; font-size: 0.65rem; font-weight: 600; margin-left: 4px;">0pt</span>';
+                }
+              }
               return '<span class="btag"><i data-lucide="user" style="width:10px;height:10px;color:var(--muted-foreground)"></i>' + p.name + cotaSuffix + ' <span class="bscore">' + scoreText + '</span>'
-                + (pts !== null ? '<span class="bpts">' + pts + 'pt</span>' : '') + '</span>';
+                + ptsBadge + '</span>';
             }).join('') || '<span style="color:var(--muted-foreground);font-size:.75rem">Sem apostas</span>';
             betsRowHtml = '<div class="bets-row">' + betsHtml + '</div>';
           }
@@ -4965,46 +4989,118 @@
           if (isParticipant) {
             var myParticipant = allParticipants.find(function (p) { return p.id === session.id; });
             var cotasCount = myParticipant ? (myParticipant.cotas !== undefined ? myParticipant.cotas : 1) : 1;
-            
-            var betsListHtml = '';
-            for (var cotaIndex = 0; cotaIndex < cotasCount; cotaIndex++) {
-              var myBet = allBets.find(function (b) { return b.participantId === session.id && String(b.matchId) === String(m.id) && b.cotaIndex === cotaIndex; });
-              var hasBet = myBet && myBet.score1 !== null && myBet.score1 !== undefined && myBet.score2 !== null && myBet.score2 !== undefined;
-              
-              var cotaLabel = cotasCount > 1 ? ' (Cota ' + (cotaIndex + 1) + ')' : '';
-              
-              if (m.locked) {
-                if (hasBet) {
-                  var pts = null;
-                  if (hasResult) {
-                    pts = calcScore(myBet, m.result, m);
-                  }
-                  betsListHtml += '<div style="display:flex; align-items:center; justify-content:space-between; font-size:0.85rem; margin-bottom: 4px;">'
-                    + '<span>Palpite' + cotaLabel + ': <strong style="color:var(--primary); font-family:Oswald;">' + myBet.score1 + ' – ' + myBet.score2 + '</strong></span>'
-                    + (pts !== null ? '<span class="tag ' + (pts === 3 ? 'gold' : pts === 1 ? 'green' : 'gray') + '" style="padding:2px 6px; font-size:0.7rem;">+' + pts + ' pt' + (pts !== 1 ? 's' : '') + '</span>' : '')
-                    + '</div>';
-                } else {
-                  betsListHtml += '<div style="font-size:0.8rem; color:var(--muted-foreground); font-style:italic;">Sem palpite' + cotaLabel + '</div>';
-                }
-              } else {
-                var btnText = hasBet ? 'Alterar' : 'Salvar';
-                var btnIcon = hasBet ? 'edit-3' : 'save';
-                var btnStyle = hasBet ? 'border-color:rgba(230,57,70,0.3); color:var(--primary); background:rgba(230,57,70,0.05);' : '';
-                
-                betsListHtml += '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom: 8px;">'
-                  + '<span style="font-size:0.82rem; font-weight:500;">Palpite' + cotaLabel + ':</span>'
-                  + '<div class="sc">'
-                  + '<input class="sinput" type="number" min="0" max="20" placeholder="–" id="j1-' + m.id + '-' + cotaIndex + '" value="' + (myBet && myBet.score1 !== null && myBet.score1 !== undefined ? myBet.score1 : '') + '" oninput="checkInputs(\'' + m.id + '\',' + cotaIndex + ',\'j\')">'
-                  + '<span class="ssep">:</span>'
-                  + '<input class="sinput" type="number" min="0" max="20" placeholder="–" id="j2-' + m.id + '-' + cotaIndex + '" value="' + (myBet && myBet.score2 !== null && myBet.score2 !== undefined ? myBet.score2 : '') + '" oninput="checkInputs(\'' + m.id + '\',' + cotaIndex + ',\'j\')">'
-                  + '</div>'
-                  + '<button class="btn-save" style="font-size:0.75rem; padding:5px 10px; ' + btnStyle + '" id="btn-j-' + m.id + '-' + cotaIndex + '" onclick="saveBet(\'' + m.id + '\',' + cotaIndex + ',\'j\')">'
-                  + '<i data-lucide="' + btnIcon + '" style="width:10px; height:10px; margin-right:3px; display:inline-block; vertical-align:-1px"></i>' + btnText
-                  + '</button>'
+            if (cotasCount === 0) {
+              myBetInfoHtml = '<div class="my-bet-info pts-zero locked" style="justify-content: center; text-align: center;">'
+                + '<div>Você não possui cotas de palpites ativas.</div>'
+                + '</div>';
+            } else {
+              myBetInfoHtml = '<div class="my-bets-container" style="border-top:1px solid var(--border); padding:14px 16px; display:flex; flex-direction:column; gap:12px;">';
+              if (cotasCount > 1) {
+                myBetInfoHtml += '<div style="font-size:0.75rem; color:var(--gold); display:flex; align-items:center; gap:6px; background:rgba(201,168,76,0.05); padding:8px 12px; border-radius:6px; border:1px solid rgba(201,168,76,0.15); margin-bottom:4px;">'
+                  + '<i data-lucide="info" style="width:14px; height:14px; flex-shrink:0;"></i>'
+                  + '<span>Cada cota adicional permite um novo palpite para a partida. Caso mais de um palpite pontue, será considerada apenas a maior pontuação obtida.</span>'
                   + '</div>';
               }
+              var bestCotaIndex = -1;
+              var bestCotaPts = -1;
+              if (hasResult) {
+                for (var k = 0; k < cotasCount; k++) {
+                  var b = allBets.find(function (x) { return x.participantId === session.id && String(x.matchId) === String(m.id) && x.cotaIndex === k; });
+                  if (b) {
+                    var ptsVal = calcScore(b, m.result, m);
+                    if (ptsVal > bestCotaPts) {
+                      bestCotaPts = ptsVal;
+                      bestCotaIndex = k;
+                    }
+                  }
+                }
+              }
+
+              for (var i = 0; i < cotasCount; i++) {
+                (function (cotaIndex) {
+                  var myBet = allBets.find(function (b) { return b.participantId === session.id && String(b.matchId) === String(m.id) && b.cotaIndex === cotaIndex; });
+                  var cotaLabel = 'Cota ' + (cotaIndex + 1);
+                  var cotaRowHtml = '';
+
+                  if (hasResult) {
+                    if (myBet) {
+                      var pts = calcScore(myBet, m.result, m);
+                      var isBest = (cotaIndex === bestCotaIndex && bestCotaPts > 0);
+                      var badgeText = '';
+                      var badgeClass = 'tag';
+                      var badgeStyle = 'padding:2px 6px; font-size:0.75rem;';
+
+                      if (m.datetime < '2026-06-20T01:00:00Z') {
+                        badgeText = 'Não pontua';
+                      } else {
+                        if (pts === 3) {
+                          badgeText = '+3 pts';
+                        } else if (pts === 1) {
+                          badgeText = '+1 pt';
+                        } else {
+                          badgeText = '0 pts';
+                        }
+
+                        if (pts > 0) {
+                          if (isBest) {
+                            badgeClass += pts === 3 ? ' gold' : ' green';
+                          } else {
+                            badgeStyle += ' background:none; border:1px solid var(--border); color:var(--muted-foreground); text-decoration:line-through; opacity:0.5;';
+                          }
+                        }
+                      }
+                      cotaRowHtml = '<div class="cota-row" style="display:flex;align-items:center;justify-content:space-between;width:100%;font-size:0.85rem;">'
+                        + '<span style="font-weight:600;color:var(--muted-foreground);">' + cotaLabel + ':</span>'
+                        + '<div>Palpite: <strong style="color:var(--gold);font-family:Oswald;">' + myBet.score1 + '–' + myBet.score2 + '</strong></div>'
+                        + '<span class="' + badgeClass + '" style="' + badgeStyle + '">' + badgeText + '</span>'
+                        + '</div>';
+                    } else {
+                      cotaRowHtml = '<div class="cota-row" style="display:flex;align-items:center;justify-content:space-between;width:100%;font-size:0.85rem;color:var(--muted-foreground);">'
+                        + '<span style="font-weight:600;">' + cotaLabel + ':</span>'
+                        + '<div>Sem palpite</div>'
+                        + '<span class="tag" style="padding:2px 6px;font-size:0.75rem;">0 pts</span>'
+                        + '</div>';
+                    }
+                  } else if (m.locked) {
+                    if (myBet) {
+                      cotaRowHtml = '<div class="cota-row" style="display:flex;align-items:center;justify-content:space-between;width:100%;font-size:0.85rem;">'
+                        + '<span style="font-weight:600;color:var(--muted-foreground);">' + cotaLabel + ':</span>'
+                        + '<div>Palpite: <strong style="color:var(--gold);font-family:Oswald;">' + myBet.score1 + '–' + myBet.score2 + '</strong></div>'
+                        + '<span style="font-size:0.75rem;color:var(--muted-foreground);">(Palpites encerrados)</span>'
+                        + '</div>';
+                    } else {
+                      cotaRowHtml = '<div class="cota-row" style="display:flex;align-items:center;justify-content:space-between;width:100%;font-size:0.85rem;color:var(--muted-foreground);">'
+                        + '<span style="font-weight:600;">' + cotaLabel + ':</span>'
+                        + '<div>Sem palpite</div>'
+                        + '<span style="font-size:0.75rem;color:var(--muted-foreground);">(Palpites encerrados)</span>'
+                        + '</div>';
+                    }
+                  } else {
+                    var btnClass = 'btn-bet';
+                    if (myBet) btnClass += ' upd';
+                    if (String(m.id) === String(lastSavedMatchId) && lastSavedCotaIndex === cotaIndex) {
+                      btnClass += lastSavedIsNew ? ' anim-morph' : ' anim-update';
+                    }
+                    var btnLabel = myBet ? 'Atualizar' : 'Apostar';
+                    var lucideIcon = myBet ? 'edit-3' : 'plus';
+
+                    cotaRowHtml = '<div class="cota-row" style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:10px;">'
+                      + '<span style="font-weight:600;color:var(--muted-foreground);font-size:0.85rem;min-width:55px;">' + cotaLabel + ':</span>'
+                      + '<div class="sc">'
+                      + '<input class="sinput" type="number" min="0" max="20" placeholder="–" id="j1-' + m.id + '-' + cotaIndex + '" value="' + (myBet && myBet.score1 !== null && myBet.score1 !== undefined ? myBet.score1 : '') + '" oninput="checkInputs(\'' + m.id + '\',' + cotaIndex + ',\'j\')">'
+                      + '<span class="ssep">:</span>'
+                      + '<input class="sinput" type="number" min="0" max="20" placeholder="–" id="j2-' + m.id + '-' + cotaIndex + '" value="' + (myBet && myBet.score2 !== null && myBet.score2 !== undefined ? myBet.score2 : '') + '" oninput="checkInputs(\'' + m.id + '\',' + cotaIndex + ',\'j\')">'
+                      + '</div>'
+                      + '<button class="' + btnClass + '" style="font-size:0.8rem;padding:6px 12px;" id="btn-j-' + m.id + '-' + cotaIndex + '" onclick="saveBet(\'' + m.id + '\',' + cotaIndex + ')">'
+                      + '<i data-lucide="' + lucideIcon + '" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>' + btnLabel
+                      + '</button>'
+                      + '</div>';
+                  }
+                  myBetInfoHtml += cotaRowHtml;
+                })(i);
+              }
+              myBetInfoHtml += '</div>';
             }
-            myBetInfoHtml = '<div style="border-top:1px solid var(--border); padding: 12px 16px;">' + betsListHtml + '</div>';
           }
 
           var statusBadgeHtml = '';
@@ -5482,6 +5578,28 @@
           + '</div>';
 
         var cotasRowsHtml = '<div style="display:flex; flex-direction:column; gap:8px; width:100%;">';
+        if (cotasCount > 1) {
+          cotasRowsHtml += '<div style="font-size:0.7rem; color:var(--gold); display:flex; align-items:center; gap:6px; background:rgba(201,168,76,0.05); padding:6px 10px; border-radius:4px; border:1px solid rgba(201,168,76,0.15); margin-bottom:4px;">'
+            + '<i data-lucide="info" style="width:12px; height:12px; flex-shrink:0;"></i>'
+            + '<span>Cada cota adicional permite um novo palpite para a partida. Caso mais de um palpite pontue, será considerada apenas a maior pontuação obtida.</span>'
+            + '</div>';
+        }
+
+        var bestCotaIndex = -1;
+        var bestCotaPts = -1;
+        if (hasResult) {
+          for (var k = 0; k < cotasCount; k++) {
+            var b = allBets.find(function (x) { return x.participantId === session.id && String(x.matchId) === String(m.id) && x.cotaIndex === k; });
+            if (b) {
+              var ptsVal = calcScore(b, m.result, m);
+              if (ptsVal > bestCotaPts) {
+                bestCotaPts = ptsVal;
+                bestCotaIndex = k;
+              }
+            }
+          }
+        }
+
         for (var i = 0; i < cotasCount; i++) {
           (function (cotaIndex) {
             var myBet = allBets.find(function (b) { return b.participantId === session.id && String(b.matchId) === String(m.id) && b.cotaIndex === cotaIndex; });
@@ -5491,20 +5609,34 @@
             if (hasResult) {
               if (myBet) {
                 var pts = calcScore(myBet, m.result, m);
+                var isBest = (cotaIndex === bestCotaIndex && bestCotaPts > 0);
                 var badgeText = '';
+                var badgeClass = 'tag';
+                var badgeStyle = 'padding: 1px 5px; font-size: 0.7rem;';
+
                 if (m.datetime < '2026-06-20T01:00:00Z') {
                   badgeText = 'Não pontua';
-                } else if (pts === 3) {
-                  badgeText = '+3 pts';
-                } else if (pts === 1) {
-                  badgeText = '+1 pt';
                 } else {
-                  badgeText = '0 pts';
+                  if (pts === 3) {
+                    badgeText = '+3 pts';
+                  } else if (pts === 1) {
+                    badgeText = '+1 pt';
+                  } else {
+                    badgeText = '0 pts';
+                  }
+
+                  if (pts > 0) {
+                    if (isBest) {
+                      badgeClass += pts === 3 ? ' gold' : ' green';
+                    } else {
+                      badgeStyle += ' background:none; border:1px solid var(--border); color:var(--muted-foreground); text-decoration:line-through; opacity:0.5;';
+                    }
+                  }
                 }
                 rowHtml = '<div style="display:flex; align-items:center; justify-content:space-between; font-size:0.8rem; width:100%;">'
                   + '<span style="color:var(--muted-foreground); font-weight:600;">' + cotaLabel + ':</span>'
                   + '<div>Seu palpite: <strong style="color:var(--gold);">' + myBet.score1 + '–' + myBet.score2 + '</strong></div>'
-                  + '<span class="tag ' + (pts === 3 ? 'gold' : pts === 1 ? 'green' : '') + '" style="padding: 1px 5px; font-size: 0.7rem;">' + badgeText + '</span>'
+                  + '<span class="' + badgeClass + '" style="' + badgeStyle + '">' + badgeText + '</span>'
                   + '</div>';
               } else {
                 rowHtml = '<div style="display:flex; align-items:center; justify-content:space-between; font-size:0.8rem; color:var(--muted-foreground); width:100%;">'
@@ -6584,42 +6716,60 @@
           return m && m.datetime >= '2026-06-20T01:00:00Z';
         });
 
-        var points = 0, exact = 0, outcome = 0;
+        // Group bets by matchId
+        var betsByMatch = {};
         myBets.forEach(function (b) {
-          var simRes = simResults[b.matchId];
+          if (!betsByMatch[b.matchId]) {
+            betsByMatch[b.matchId] = [];
+          }
+          betsByMatch[b.matchId].push(b);
+        });
+
+        var points = 0, exact = 0, outcome = 0;
+        var lastBetTime = null;
+
+        Object.keys(betsByMatch).forEach(function (matchId) {
+          var matchBets = betsByMatch[matchId];
+          var simRes = simResults[matchId];
           if (simRes) {
-            var m = allMatches.find(function (x) { return String(x.id) === String(b.matchId); });
-            var pts = calcScore(b, simRes, m);
-            points += pts;
-            if (pts === 3) exact++;
-            if (pts === 1) outcome++;
+            var m = allMatches.find(function (x) { return String(x.id) === String(matchId); });
+            var maxPts = 0;
+            matchBets.forEach(function (b) {
+              var pts = calcScore(b, simRes, m);
+              if (pts > maxPts) {
+                maxPts = pts;
+              }
+              if (b.score1 !== null && b.score2 !== null) {
+                var t = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                if (t > 0) {
+                  if (lastBetTime === null || t > lastBetTime) {
+                    lastBetTime = t;
+                  }
+                }
+              }
+            });
+            points += maxPts;
+            if (maxPts === 3) exact++;
+            else if (maxPts === 1) outcome++;
           }
         });
 
-        var lastBetTime = Infinity;
-        if (myBets.length > 0) {
-          var times = [];
-          myBets.forEach(function (b) {
-            if (b.createdAt) {
-              var t = new Date(b.createdAt).getTime();
-              if (t > 0) {
-                times.push(t);
-              }
-            }
-          });
-          if (times.length > 0) {
-            lastBetTime = Math.max.apply(null, times);
-          }
-        }
-
-        return { id: p.id, name: p.name, points: points, exact: exact, outcome: outcome, lastBetTime: lastBetTime };
+        return { 
+          id: p.id, 
+          name: p.name, 
+          points: points, 
+          exact: exact, 
+          outcome: outcome, 
+          lastBetTime: lastBetTime 
+        };
       });
 
       ranking.sort(function (a, b) {
         if (b.points !== a.points) return b.points - a.points;
         if (b.exact !== a.exact) return b.exact - a.exact;
-        if (a.lastBetTime === b.lastBetTime) return 0;
-        return a.lastBetTime < b.lastBetTime ? -1 : 1;
+        var timeA = a.lastBetTime === null ? Infinity : a.lastBetTime;
+        var timeB = b.lastBetTime === null ? Infinity : b.lastBetTime;
+        return timeA - timeB;
       });
 
       simulatedRanking = ranking;
