@@ -159,6 +159,48 @@ async function initDB() {
         .catch(err => console.log('live_link col:', err.message));
       await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS match_datetime TEXT;`)
         .catch(err => console.log('match_datetime col:', err.message));
+      await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS manual_override BOOLEAN DEFAULT FALSE;`)
+        .catch(err => console.log('manual_override col:', err.message));
+      await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS team1 TEXT;`)
+        .catch(err => console.log('team1 col:', err.message));
+      await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS team2 TEXT;`)
+        .catch(err => console.log('team2 col:', err.message));
+      await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS team1_badge TEXT;`)
+        .catch(err => console.log('team1_badge col:', err.message));
+      await pool.query(`ALTER TABLE results ADD COLUMN IF NOT EXISTS team2_badge TEXT;`)
+        .catch(err => console.log('team2_badge col:', err.message));
+      
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS api_match_mappings (
+          local_match_id TEXT PRIMARY KEY,
+          api_match_id TEXT UNIQUE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `).catch(err => console.log('api_match_mappings table:', err.message));
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS sync_logs (
+          id TEXT PRIMARY KEY,
+          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          status TEXT NOT NULL,
+          matches_synced INTEGER NOT NULL DEFAULT 0,
+          details TEXT
+        );
+      `).catch(err => console.log('sync_logs table:', err.message));
+
+      // Check if we were previously using TheSportsDB
+      try {
+        const prevSportsDb = await pool.query("SELECT * FROM config WHERE key = 'thesportsdb_api_last_sync'");
+        if (prevSportsDb.rows.length > 0) {
+          console.log('Migrating back to Football-Data: Clearing api_match_mappings and old configs...');
+          await pool.query("DELETE FROM api_match_mappings");
+          await pool.query("DELETE FROM config WHERE key = 'thesportsdb_api_last_sync'");
+          await pool.query("DELETE FROM config WHERE key = 'thesportsdb_api_last_success'");
+        }
+      } catch (migrationErr) {
+        console.log('Migration cleanup error:', migrationErr.message);
+      }
+
       await pool.query(`ALTER TABLE banners ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'warning';`)
         .catch(err => console.log('banner type col:', err.message));
       
@@ -203,8 +245,533 @@ function loadMatches() {
 }
 
 function isLocked(match) {
+  if (match.result && (match.result.status === 'live' || match.result.status === 'in_play' || match.result.status === 'finished')) {
+    return true;
+  }
   if (!match.datetime) return false;
   return new Date() >= new Date(match.datetime);
+}
+
+function translateTeamNameLocal(apiName, localMatch = null) {
+  if (!apiName) return '';
+  const clean = apiName.trim().toLowerCase();
+  
+  // Synonyms/Translations map from TheSportsDB name -> matches.json key name
+  const mapping = {
+    'united states': 'USA',
+    'united states of america': 'USA',
+    'usa': 'USA',
+    'korea republic': 'South Korea',
+    'south korea': 'South Korea',
+    'czechia': 'Czech Republic',
+    'czech republic': 'Czech Republic',
+    'côte d\'ivoire': 'Ivory Coast',
+    'cote d\'ivoire': 'Ivory Coast',
+    'ivory coast': 'Ivory Coast',
+    'congo dr': 'DR Congo',
+    'dr congo': 'DR Congo',
+    'cabo verde': 'Cape Verde',
+    'cape verde': 'Cape Verde',
+    'bosnia and herzegovina': 'Bosnia & Herzegovina',
+    'bosnia & herzegovina': 'Bosnia & Herzegovina',
+    'bosnia-herzegovina': 'Bosnia & Herzegovina',
+    'macedonia': 'North Macedonia',
+    'republic of Ireland': 'Ireland'
+  };
+
+  // Check direct mapping
+  for (const [key, val] of Object.entries(mapping)) {
+    if (clean === key) return val;
+  }
+
+  // Fallback: check if matches.json uses this name
+  const localCountries = [
+    'Algeria', 'Argentina', 'Australia', 'Austria', 'Belgium', 'Bosnia & Herzegovina', 
+    'Brazil', 'Canada', 'Cape Verde', 'Colombia', 'Croatia', 'Curaçao', 'Czech Republic', 
+    'DR Congo', 'Ecuador', 'Egypt', 'England', 'France', 'Germany', 'Ghana', 'Haiti', 
+    'Iran', 'Iraq', 'Ivory Coast', 'Japan', 'Jordan', 'Mexico', 'Morocco', 'Netherlands', 
+    'New Zealand', 'Norway', 'Panama', 'Paraguay', 'Portugal', 'Qatar', 'Saudi Arabia', 
+    'Scotland', 'Senegal', 'South Africa', 'South Korea', 'Spain', 'Sweden', 'Switzerland', 
+    'Tunisia', 'Turkey', 'USA', 'Uruguay', 'Uzbekistan'
+  ];
+
+  const found = localCountries.find(c => c.toLowerCase() === clean);
+  if (found) return found;
+
+  return apiName;
+}
+
+function findBestLocalMatch(apiMatch, localMatches, mappingMap, resultsMap = {}) {
+  const apiId = String(apiMatch.id);
+  const mappedLocalIds = new Set(Object.values(mappingMap));
+
+  const apiHome = translateTeamNameLocal(apiMatch.homeTeam ? apiMatch.homeTeam.name : '').toLowerCase();
+  const apiAway = translateTeamNameLocal(apiMatch.awayTeam ? apiMatch.awayTeam.name : '').toLowerCase();
+
+  // 1. Group Stage: Find by team names in either order inside a group match
+  if (apiMatch.stage === 'GROUP_STAGE') {
+    const groupMatch = localMatches.find(m => {
+      if (mappedLocalIds.has(m.id)) return false;
+      if (!m.group) return false; // Must be group stage in local template
+
+      const mHome = m.team1.toLowerCase();
+      const mAway = m.team2.toLowerCase();
+      return (mHome === apiHome && mAway === apiAway) || (mHome === apiAway && mAway === apiHome);
+    });
+
+    if (groupMatch) return groupMatch.id;
+  }
+
+  // 2. Knockout Stage: Find by resolved team names first
+  if (apiHome && apiAway && apiHome !== 'tbd' && apiAway !== 'tbd' && !apiHome.startsWith('1') && !apiHome.startsWith('2') && !apiAway.startsWith('1') && !apiAway.startsWith('2')) {
+    const resolvedMatch = localMatches.find(m => {
+      if (mappedLocalIds.has(m.id)) return false;
+      if (m.group) return false; // Must be knockout stage
+
+      const r = resultsMap[m.id];
+      const localHome = (r && r.team1 ? r.team1 : m.team1).toLowerCase();
+      const localAway = (r && r.team2 ? r.team2 : m.team2).toLowerCase();
+
+      return (localHome === apiHome && localAway === apiAway) || (localHome === apiAway && localAway === apiHome);
+    });
+
+    if (resolvedMatch) return resolvedMatch.id;
+  }
+
+  // Fallback to stage/round name and date
+  let targetRound = '';
+  const apiStage = String(apiMatch.stage || '').toUpperCase();
+
+  if (apiStage === 'LAST_32' || apiStage === 'ROUND_OF_32') {
+    targetRound = 'Round of 32';
+  } else if (apiStage === 'LAST_16' || apiStage === 'ROUND_OF_16') {
+    targetRound = 'Round of 16';
+  } else if (apiStage === 'QUARTER_FINALS') {
+    targetRound = 'Quarter-final';
+  } else if (apiStage === 'SEMI_FINALS') {
+    targetRound = 'Semi-final';
+  } else if (apiStage === 'THIRD_PLACE') {
+    targetRound = 'Third place';
+  } else if (apiStage === 'FINAL') {
+    targetRound = 'Final';
+  }
+
+  if (!targetRound) return null;
+
+  // Filter local matches of this round that are not already mapped
+  const candidates = localMatches.filter(m => {
+    if (mappedLocalIds.has(m.id)) return false;
+    return m.round === targetRound;
+  });
+
+  if (candidates.length === 0) return null;
+  if (candidates.length === 1) return candidates[0].id;
+
+  // Match by closest datetime (within 24 hours)
+  const apiDateIso = apiMatch.utcDate;
+  if (apiDateIso) {
+    const apiDate = new Date(apiDateIso);
+    let bestMatch = null;
+    let minDiff = Infinity;
+
+    candidates.forEach(m => {
+      const mDate = new Date(m.datetime);
+      const diff = Math.abs(apiDate - mDate);
+      if (diff < minDiff) {
+        minDiff = diff;
+        bestMatch = m;
+      }
+    });
+
+    if (bestMatch && minDiff < 24 * 60 * 60 * 1000) {
+      return bestMatch.id;
+    }
+  }
+
+  return null;
+}
+
+async function syncMatches(force = false) {
+  // 1. Load local matches and config
+  const localMatches = loadMatches();
+  const now = new Date();
+  const startTime = Date.now();
+
+  // Load results from DB
+  const resultsRes = await pool.query('SELECT match_id, score1, score2, status, penalties_winner, team1_badge, team2_badge, manual_override, match_datetime FROM results');
+  const resultsMap = {};
+  resultsRes.rows.forEach(r => {
+    resultsMap[r.match_id] = r;
+  });
+
+  // 2. Local auto-initialization to 0x0 for started matches
+  let autoInitCount = 0;
+  let initDetails = [];
+  const clientInit = await pool.connect();
+  try {
+    await clientInit.query('BEGIN');
+    for (const m of localMatches) {
+      const existing = resultsMap[m.id];
+      const matchTime = existing && existing.match_datetime ? new Date(existing.match_datetime) : new Date(m.datetime);
+      
+      if (now >= matchTime) {
+        const needsInit = !existing || 
+                           existing.score1 === null || 
+                           existing.score2 === null || 
+                           existing.status === 'scheduled';
+        
+        const isOverride = existing && existing.manual_override;
+
+        if (needsInit && !isOverride) {
+          // Initialize to 0x0 and status live
+          await clientInit.query(`
+            INSERT INTO results (match_id, score1, score2, status, manual_override)
+            VALUES ($1, 0, 0, 'live', FALSE)
+            ON CONFLICT (match_id) DO UPDATE
+            SET score1 = 0, score2 = 0, status = 'live', manual_override = FALSE
+          `, [m.id]);
+          
+          autoInitCount++;
+          initDetails.push(`Jogo #${m.id} (${m.team1} x ${m.team2}) atingiu horário de início. Inicializado localmente em 0x0 (AO VIVO).`);
+          
+          // Update local results map for subsequent logic
+          resultsMap[m.id] = {
+            ...resultsMap[m.id],
+            match_id: m.id,
+            score1: 0,
+            score2: 0,
+            status: 'live',
+            manual_override: false
+          };
+        }
+      }
+    }
+    await clientInit.query('COMMIT');
+  } catch (err) {
+    await clientInit.query('ROLLBACK');
+    console.error('Error during auto-initialization of live matches:', err);
+    initDetails.push(`Erro na auto-inicialização de jogos iniciados: ${err.message}`);
+  } finally {
+    clientInit.release();
+  }
+
+  // 3. Cooldown / Cache check
+  const lastSyncRes = await pool.query("SELECT value FROM config WHERE key = 'football_api_last_sync'");
+  const lastSyncStr = lastSyncRes.rows[0]?.value;
+
+  if (lastSyncStr) {
+    const lastSync = new Date(lastSyncStr);
+    const timeDiffMs = now - lastSync;
+
+    // Rígido: no máximo 1 requisição a cada 8 segundos (Limite absoluto / antispam - para 10 req/min)
+    if (timeDiffMs < 8 * 1000) {
+      const remainingSeconds = 8 - Math.round(timeDiffMs / 1000);
+      return {
+        ok: true,
+        message: `Limite de cota (Football-Data.org) atingido. Aguarde ${remainingSeconds} segundos.`,
+        cached: true,
+        matchesSynced: autoInitCount,
+        details: [
+          ...initDetails,
+          `Sincronização externa ignorada. Cooldown rígido ativo. Restam ${remainingSeconds}s.`
+        ]
+      };
+    }
+
+    // Cooldown dinâmico normal (se não for forçado)
+    if (!force) {
+      // Check current statuses
+      const statuses = Object.values(resultsMap).map(r => r.status);
+      const hasLive = statuses.some(s => s === 'live');
+      const hasScheduled = statuses.some(s => s === 'scheduled') || Object.keys(resultsMap).length < localMatches.length;
+
+      let cooldownMs = 20 * 60 * 1000; // 20 minutos se todas as partidas encerradas
+      let reason = 'todas as partidas encerradas (20m)';
+
+      if (hasLive) {
+        cooldownMs = 1 * 60 * 1000; // 1 minuto se houver partidas ao vivo
+        reason = 'partidas ao vivo em andamento (1m)';
+      } else if (hasScheduled) {
+        cooldownMs = 10 * 60 * 1000; // 10 minutos se houver partidas agendadas
+        reason = 'partidas agendadas futuras (10m)';
+      }
+
+      if (timeDiffMs < cooldownMs) {
+        const remMin = Math.ceil((cooldownMs - timeDiffMs) / (60 * 1000));
+        return {
+          ok: true,
+          message: 'Sincronização externa ignorada pelo cooldown dinâmico.',
+          cached: true,
+          matchesSynced: autoInitCount,
+          details: [
+            ...initDetails,
+            `Dados locais recentes devido a: ${reason}. Restam ${remMin} minutos.`
+          ]
+        };
+      }
+    }
+  }
+
+  // Update last sync timestamp immediately to prevent race conditions
+  await pool.query(`
+    INSERT INTO config (key, value) VALUES ('football_api_last_sync', $1)
+    ON CONFLICT (key) DO UPDATE SET value = $1
+  `, [now.toISOString()]);
+
+  // 4. API External Call
+  let apiKey = process.env.FOOTBALL_API_KEY || process.env.FOOTBALL_DATA_API_KEY;
+  if (!apiKey || apiKey === 'sua_chave_aqui') {
+    // If API key is missing, log the local initialization and exit gracefully
+    const logId = uuidv4();
+    await pool.query(`
+      INSERT INTO sync_logs (id, timestamp, status, matches_synced, details)
+      VALUES ($1, $2, $3, $4, $5)
+    `, [
+      logId,
+      now.toISOString(),
+      autoInitCount > 0 ? 'success' : 'failure',
+      autoInitCount,
+      [`Auto-inicialização local: ${autoInitCount} jogos iniciados.`, 'Erro: API Key do Football-Data.org não configurada (.env).'].join('\n')
+    ]);
+    return {
+      ok: false,
+      message: 'Football-Data.org API Key não configurada. Defina FOOTBALL_API_KEY no arquivo .env.',
+      matchesSynced: autoInitCount,
+      details: [...initDetails, 'API Key do Football-Data.org não configurada.']
+    };
+  }
+
+  let syncStatus = 'success';
+  let matchesSynced = 0;
+  let detailsLog = [...initDetails];
+
+  try {
+    const response = await fetch(`https://api.football-data.org/v4/competitions/2000/matches`, {
+      headers: {
+        'X-Auth-Token': apiKey
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`API retornou erro ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    if (!data.matches || !Array.isArray(data.matches)) {
+      throw new Error('Formato inválido recebido da Football-Data API (objeto "matches" esperado).');
+    }
+
+    // Load mappings
+    const mappingRes = await pool.query('SELECT local_match_id, api_match_id FROM api_match_mappings');
+    const mappingMap = {};
+    mappingRes.rows.forEach(r => {
+      mappingMap[r.api_match_id] = r.local_match_id;
+    });
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      for (const apiMatch of data.matches) {
+        const apiId = String(apiMatch.id);
+        let localId = mappingMap[apiId];
+
+        if (!localId) {
+          localId = findBestLocalMatch(apiMatch, localMatches, mappingMap, resultsMap);
+          if (localId) {
+            await client.query(`
+              INSERT INTO api_match_mappings (local_match_id, api_match_id)
+              VALUES ($1, $2)
+              ON CONFLICT (local_match_id) DO NOTHING
+            `, [localId, apiId]);
+            mappingMap[apiId] = localId; // cache local
+          }
+        }
+
+        if (!localId) continue;
+
+        const localMatch = localMatches.find(m => m.id === localId);
+        if (!localMatch) continue;
+
+        const existingResult = resultsMap[localId];
+        if (existingResult && existingResult.manual_override) {
+          detailsLog.push(`Jogo #${localId} (${localMatch.team1} x ${localMatch.team2}) ignorado por conter ajuste manual.`);
+          continue;
+        }
+
+        // Map status
+        // Football-Data statuses: TIMED, SCHEDULED, LIVE, IN_PLAY, PAUSED, FINISHED, POSTPONED, SUSPENDED, CANCELLED
+        const apiStatus = (apiMatch.status || '').toUpperCase();
+        let mappedStatus = 'scheduled';
+        if (apiStatus === 'FINISHED') {
+          mappedStatus = 'finished';
+        } else if (apiStatus === 'IN_PLAY' || apiStatus === 'PAUSED' || apiStatus === 'LIVE') {
+          mappedStatus = 'live';
+        } else if (apiStatus === 'POSTPONED' || apiStatus === 'CANCELLED' || apiStatus === 'SUSPENDED') {
+          mappedStatus = 'cancelled';
+        }
+
+        // Map scores
+        const apiHomeScore = (apiMatch.score && apiMatch.score.fullTime && apiMatch.score.fullTime.home !== null) ? parseInt(apiMatch.score.fullTime.home) : null;
+        const apiAwayScore = (apiMatch.score && apiMatch.score.fullTime && apiMatch.score.fullTime.away !== null) ? parseInt(apiMatch.score.fullTime.away) : null;
+
+        // Resolve penalties
+        let penaltiesWinner = null;
+        if (mappedStatus === 'finished' && apiHomeScore === apiAwayScore && apiHomeScore !== null) {
+          if (apiMatch.score && apiMatch.score.duration === 'PENALTY_SHOOTOUT') {
+            const penHome = apiMatch.score.penalties && apiMatch.score.penalties.home;
+            const penAway = apiMatch.score.penalties && apiMatch.score.penalties.away;
+            if (penHome !== null && penAway !== null) {
+              if (penHome > penAway) {
+                penaltiesWinner = apiMatch.homeTeam.name;
+              } else if (penAway > penHome) {
+                penaltiesWinner = apiMatch.awayTeam.name;
+              }
+            }
+          }
+          
+          if (penaltiesWinner) {
+            penaltiesWinner = translateTeamNameLocal(penaltiesWinner, localMatch);
+          }
+        }
+
+        const apiHomeNameTranslated = translateTeamNameLocal(apiMatch.homeTeam ? apiMatch.homeTeam.name : '', localMatch);
+        const apiAwayNameTranslated = translateTeamNameLocal(apiMatch.awayTeam ? apiMatch.awayTeam.name : '', localMatch);
+        const apiHomeBadge = (apiMatch.homeTeam && apiMatch.homeTeam.crest) || null;
+        const apiAwayBadge = (apiMatch.awayTeam && apiMatch.awayTeam.crest) || null;
+
+        const scoreChanged = !existingResult ||
+                             existingResult.score1 !== apiHomeScore ||
+                             existingResult.score2 !== apiAwayScore ||
+                             existingResult.status !== mappedStatus ||
+                             existingResult.team1_badge !== apiHomeBadge ||
+                             existingResult.team2_badge !== apiAwayBadge ||
+                             existingResult.penalties_winner !== penaltiesWinner;
+
+        const isPlaceholderTeam1 = localMatch.team1 === 'TBD' || /^[1-3][A-L]/.test(localMatch.team1) || localMatch.team1 === '3rd';
+        const isPlaceholderTeam2 = localMatch.team2 === 'TBD' || /^[1-3][A-L]/.test(localMatch.team2) || localMatch.team2 === '3rd';
+        const needTeamUpdate1 = isPlaceholderTeam1 && apiMatch.homeTeam && apiMatch.homeTeam.name && apiHomeNameTranslated !== localMatch.team1;
+        const needTeamUpdate2 = isPlaceholderTeam2 && apiMatch.awayTeam && apiMatch.awayTeam.name && apiAwayNameTranslated !== localMatch.team2;
+
+        if (scoreChanged || needTeamUpdate1 || needTeamUpdate2 || !existingResult) {
+          const apiDateIso = apiMatch.utcDate || localMatch.datetime;
+
+          await client.query(`
+            INSERT INTO results (match_id) VALUES ($1) ON CONFLICT (match_id) DO NOTHING
+          `, [localId]);
+
+          const updates = [];
+          const values = [];
+          let paramIdx = 1;
+
+          if (apiHomeScore !== null && apiHomeScore !== undefined) {
+            updates.push(`score1 = $${paramIdx++}`);
+            values.push(apiHomeScore);
+          } else {
+            updates.push(`score1 = NULL`);
+          }
+
+          if (apiAwayScore !== null && apiAwayScore !== undefined) {
+            updates.push(`score2 = $${paramIdx++}`);
+            values.push(apiAwayScore);
+          } else {
+            updates.push(`score2 = NULL`);
+          }
+
+          updates.push(`status = $${paramIdx++}`);
+          values.push(mappedStatus);
+
+          if (penaltiesWinner) {
+            updates.push(`penalties_winner = $${paramIdx++}`);
+            values.push(penaltiesWinner);
+          } else {
+            updates.push(`penalties_winner = NULL`);
+          }
+
+          updates.push(`match_datetime = $${paramIdx++}`);
+          values.push(apiDateIso);
+
+          if (apiMatch.homeTeam && apiMatch.homeTeam.name) {
+            updates.push(`team1 = $${paramIdx++}`);
+            values.push(apiHomeNameTranslated);
+          }
+          if (apiMatch.awayTeam && apiMatch.awayTeam.name) {
+            updates.push(`team2 = $${paramIdx++}`);
+            values.push(apiAwayNameTranslated);
+          }
+
+          if (apiHomeBadge) {
+            updates.push(`team1_badge = $${paramIdx++}`);
+            values.push(apiHomeBadge);
+          }
+          if (apiAwayBadge) {
+            updates.push(`team2_badge = $${paramIdx++}`);
+            values.push(apiAwayBadge);
+          }
+
+          updates.push(`manual_override = FALSE`);
+          values.push(localId);
+
+          await client.query(`
+            UPDATE results 
+            SET ${updates.join(', ')} 
+            WHERE match_id = $${paramIdx}
+          `, values);
+
+          // Se a partida foi finalizada, processar desafios da rodada
+          if (mappedStatus === 'finished' && apiHomeScore !== null && apiAwayScore !== null) {
+            const chCheck = await client.query('SELECT status FROM challenge_matches WHERE match_id = $1', [localId]);
+            if (chCheck.rows.length && chCheck.rows[0].status === 'open') {
+              try {
+                await autoProcessChallenge(client, localId);
+                detailsLog.push(`Desafio do Jogo #${localId} processado com sucesso.`);
+              } catch (chErr) {
+                console.error(`Error auto-processing challenge for match ${localId}:`, chErr);
+                detailsLog.push(`Erro ao processar desafio do Jogo #${localId}: ${chErr.message}`);
+              }
+            }
+          }
+
+          matchesSynced++;
+          const scoreStr = apiHomeScore !== null ? `${apiHomeScore}x${apiAwayScore}` : 'VS';
+          detailsLog.push(`Jogo #${localId}: ${apiHomeNameTranslated} ${scoreStr} ${apiAwayNameTranslated} (${mappedStatus})`);
+        }
+      }
+
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+
+    // Grava o sucesso do sync
+    await pool.query(`
+      INSERT INTO config (key, value) VALUES ('football_api_last_success', $1)
+      ON CONFLICT (key) DO UPDATE SET value = $1
+    `, [now.toISOString()]);
+
+  } catch (err) {
+    syncStatus = 'failure';
+    detailsLog.push(`Erro na sincronização: ${err.message}`);
+    console.error('API sync error:', err.message);
+  }
+
+  // 4. Save to sync_logs
+  const executionTime = Date.now() - startTime;
+  const logId = uuidv4();
+  await pool.query(`
+    INSERT INTO sync_logs (id, status, matches_synced, details)
+    VALUES ($1, $2, $3, $4)
+  `, [logId, syncStatus, matchesSynced, detailsLog.join('\n')]);
+
+  return {
+    ok: syncStatus === 'success',
+    matchesSynced,
+    details: detailsLog,
+    executionTimeMs: executionTime
+  };
 }
 
 function calcScore(b1, b2, s1, s2) {
@@ -490,8 +1057,14 @@ module.exports = async function handler(req, res) {
 
     // GET /matches
     if (url === '/matches' && method === 'GET') {
+      try {
+        await syncMatches(false);
+      } catch (syncErr) {
+        console.error('Auto-sync error during GET /matches:', syncErr.message);
+      }
+
       const matches = loadMatches();
-      const { rows } = await pool.query('SELECT match_id, score1, score2, penalties_winner, status, live_link, match_datetime FROM results');
+      const { rows } = await pool.query('SELECT match_id, score1, score2, penalties_winner, status, live_link, match_datetime, team1, team2, team1_badge, team2_badge FROM results');
       const resMap = {};
       rows.forEach(r => {
         resMap[r.match_id] = {
@@ -500,14 +1073,26 @@ module.exports = async function handler(req, res) {
           penalties_winner: r.penalties_winner,
           status: r.status,
           live_link: r.live_link,
-          match_datetime: r.match_datetime
+          match_datetime: r.match_datetime,
+          team1: r.team1,
+          team2: r.team2,
+          team1_badge: r.team1_badge,
+          team2_badge: r.team2_badge
         };
       });
       const mapped = matches.map(m => {
         const r = resMap[m.id];
         const datetime = (r && r.match_datetime) ? r.match_datetime : m.datetime;
+        const team1 = (r && r.team1) ? r.team1 : m.team1;
+        const team2 = (r && r.team2) ? r.team2 : m.team2;
+        const team1_badge = (r && r.team1_badge) ? r.team1_badge : null;
+        const team2_badge = (r && r.team2_badge) ? r.team2_badge : null;
         const mappedMatch = {
           ...m,
+          team1,
+          team2,
+          team1_badge,
+          team2_badge,
           datetime: datetime,
           result: r || null
         };
@@ -542,9 +1127,9 @@ module.exports = async function handler(req, res) {
           const hasTimeOverride = rCheck.rows.length > 0 && rCheck.rows[0].match_datetime;
           
           if (hasTimeOverride) {
-            // Keep the row but clear result fields
+            // Keep the row but clear result fields and reset manual_override to FALSE
             await client.query(
-              `UPDATE results SET score1 = NULL, score2 = NULL, penalties_winner = NULL, status = NULL, live_link = NULL WHERE match_id = $1`,
+              `UPDATE results SET score1 = NULL, score2 = NULL, penalties_winner = NULL, status = NULL, live_link = NULL, manual_override = FALSE WHERE match_id = $1`,
               [id]
             );
           } else {
@@ -591,6 +1176,11 @@ module.exports = async function handler(req, res) {
           if (match_datetime !== undefined) {
             updates.push(`match_datetime = $${paramIdx++}`);
             values.push(match_datetime);
+          }
+
+          // Mark as manually overridden if score or status is updated manually
+          if (score1 !== undefined || score2 !== undefined || penalties_winner !== undefined || status !== undefined) {
+            updates.push(`manual_override = TRUE`);
           }
 
           if (updates.length > 0) {
@@ -829,11 +1419,14 @@ module.exports = async function handler(req, res) {
       const match = loadMatches().find(m => m.id === String(matchId));
       if (!match) return res.status(404).json({ error: 'Partida não encontrada' });
 
-      const resCheck = await pool.query('SELECT score1, score2, match_datetime FROM results WHERE match_id = $1', [String(matchId)]);
+      const resCheck = await pool.query('SELECT score1, score2, status, match_datetime FROM results WHERE match_id = $1', [String(matchId)]);
       const scoreDefined = resCheck.rows.length > 0 && resCheck.rows[0].score1 !== null && resCheck.rows[0].score2 !== null;
 
-      if (resCheck.rows.length && resCheck.rows[0].match_datetime) {
-        match.datetime = resCheck.rows[0].match_datetime;
+      if (resCheck.rows.length) {
+        match.result = resCheck.rows[0];
+        if (resCheck.rows[0].match_datetime) {
+          match.datetime = resCheck.rows[0].match_datetime;
+        }
       }
 
       if (isLocked(match) || scoreDefined) {
@@ -1362,11 +1955,14 @@ module.exports = async function handler(req, res) {
       const match = matches.find(m => String(m.id) === String(matchId));
       if (!match) return res.status(404).json({ error: 'Partida não encontrada' });
 
-      const resCheck = await pool.query('SELECT score1, score2, match_datetime FROM results WHERE match_id = $1', [String(matchId)]);
+      const resCheck = await pool.query('SELECT score1, score2, status, match_datetime FROM results WHERE match_id = $1', [String(matchId)]);
       const scoreDefined = resCheck.rows.length > 0 && resCheck.rows[0].score1 !== null && resCheck.rows[0].score2 !== null;
 
-      if (resCheck.rows.length && resCheck.rows[0].match_datetime) {
-        match.datetime = resCheck.rows[0].match_datetime;
+      if (resCheck.rows.length) {
+        match.result = resCheck.rows[0];
+        if (resCheck.rows[0].match_datetime) {
+          match.datetime = resCheck.rows[0].match_datetime;
+        }
       }
 
       if (isLocked(match) || scoreDefined) return res.status(403).json({ error: 'Os palpites para esta partida já foram encerrados' });
@@ -1697,6 +2293,91 @@ module.exports = async function handler(req, res) {
          ORDER BY t.created_at DESC`
       );
       return res.status(200).json(rows.map(r => ({ ...r, amount: parseFloat(r.amount) })));
+    }
+
+    // GET /admin/sync-status (admin only)
+    if (url === '/admin/sync-status' && method === 'GET') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+
+      const lastSyncRes = await pool.query("SELECT value FROM config WHERE key = 'football_api_last_sync'");
+      const lastSuccessRes = await pool.query("SELECT value FROM config WHERE key = 'football_api_last_success'");
+      
+      const logsRes = await pool.query(`
+        SELECT id, timestamp, status, matches_synced, details 
+        FROM sync_logs 
+        ORDER BY timestamp DESC 
+        LIMIT 20
+      `);
+
+      const apiKey = process.env.FOOTBALL_API_KEY || process.env.FOOTBALL_DATA_API_KEY;
+      const apiConfigured = apiKey && apiKey !== 'sua_chave_aqui' && apiKey !== '';
+
+      return res.status(200).json({
+        lastSync: lastSyncRes.rows[0]?.value || null,
+        lastSuccess: lastSuccessRes.rows[0]?.value || null,
+        apiConfigured: !!apiConfigured,
+        recentLogs: logsRes.rows
+      });
+    }
+
+    // POST /admin/sync/force (admin only)
+    if (url === '/admin/sync/force' && method === 'POST') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+
+      try {
+        const result = await syncMatches(true); // force = true
+        return res.status(200).json(result);
+      } catch (e) {
+        console.error('Manual force sync error:', e);
+        return res.status(500).json({ error: e.message });
+      }
+    }
+
+    // POST /admin/reprocess-all (admin only)
+    if (url === '/admin/reprocess-all' && method === 'POST') {
+      const adminPin = await getAdminPin();
+      if (String(req.headers['x-admin-pin']) !== adminPin)
+        return res.status(401).json({ error: 'PIN de admin incorreto' });
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        
+        const finishedMatchesRes = await client.query(`
+          SELECT match_id FROM results 
+          WHERE status = 'finished' AND score1 IS NOT NULL AND score2 IS NOT NULL
+        `);
+        
+        let processedCount = 0;
+        for (const row of finishedMatchesRes.rows) {
+          const chCheck = await client.query('SELECT status FROM challenge_matches WHERE match_id = $1', [row.match_id]);
+          if (chCheck.rows.length && chCheck.rows[0].status === 'processed') {
+            await autoRollbackChallenge(client, row.match_id);
+          }
+          await autoProcessChallenge(client, row.match_id);
+          processedCount++;
+        }
+
+        await client.query('COMMIT');
+        
+        await pool.query(
+          `INSERT INTO comm_log (id, type, sub_type, message, detail, recipient_count) 
+           VALUES ($1, 'system', 'reprocess_all', $2, NULL, NULL)`,
+          [uuidv4(), `Reprocessamento manual de todas as pontuações e desafios. Partidas reprocessadas: ${processedCount}`]
+        ).catch(e => console.error('comm_log reprocess_all insert:', e.message));
+
+        return res.status(200).json({ ok: true, message: `Reprocessamento concluído. ${processedCount} partidas reprocessadas.` });
+      } catch (e) {
+        await client.query('ROLLBACK');
+        console.error('Reprocess all error:', e);
+        return res.status(500).json({ error: e.message });
+      } finally {
+        client.release();
+      }
     }
 
     // GET /admin/wallets (admin only)
