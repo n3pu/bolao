@@ -5158,7 +5158,7 @@
     }
 
     function calcScore(bet, result, match) {
-      if (match && match.datetime < '2026-06-20T01:00:00Z') return 0;
+      if (match && match.datetime < '2026-06-20T00:00:00Z') return 0;
       if (!result || result.score1 === null || result.score2 === null) return 0;
       var s1 = parseInt(result.score1), s2 = parseInt(result.score2);
       var b1 = parseInt(bet.score1), b2 = parseInt(bet.score2);
@@ -5382,7 +5382,7 @@
                       var badgeClass = 'tag';
                       var badgeStyle = 'padding:2px 6px; font-size:0.75rem;';
 
-                      if (m.datetime < '2026-06-20T01:00:00Z') {
+                      if (m.datetime < '2026-06-20T00:00:00Z') {
                         badgeText = 'Não pontua';
                       } else {
                         if (pts === 3) {
@@ -5966,7 +5966,7 @@
                 var badgeClass = 'tag';
                 var badgeStyle = 'padding: 1px 5px; font-size: 0.7rem;';
 
-                if (m.datetime < '2026-06-20T01:00:00Z') {
+                if (m.datetime < '2026-06-20T00:00:00Z') {
                   badgeText = 'Não pontua';
                 } else {
                   if (pts === 3) {
@@ -7205,7 +7205,7 @@
         var myBets = allBets.filter(function (b) {
           if (b.participantId !== p.id) return false;
           var m = allMatches.find(function (x) { return String(x.id) === String(b.matchId); });
-          return m && m.datetime >= '2026-06-20T01:00:00Z';
+          return m && m.datetime >= '2026-06-20T00:00:00Z';
         });
 
         // Group bets by matchId

@@ -1456,14 +1456,14 @@ module.exports = async function handler(req, res) {
         };
       });
       const ranking = parts.rows.map(p => {
-        // Only count bets for matches on or after Brazil's first game (2026-06-20T01:00:00Z)
+        // Only count bets for matches on or after Brazil's first game (2026-06-20T00:00:00Z)
         const myBets = bets.rows.filter(b => {
           if (b.participant_id !== p.id) return false;
           const m = loadMatches().find(x => String(x.id) === String(b.match_id));
           if (!m) return false;
           const r = resMap[b.match_id];
           const datetime = (r && r.match_datetime) ? r.match_datetime : m.datetime;
-          return datetime >= '2026-06-20T01:00:00Z';
+          return datetime >= '2026-06-20T00:00:00Z';
         });
         
         // Group bets by match_id
