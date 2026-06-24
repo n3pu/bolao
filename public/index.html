@@ -35,12 +35,31 @@
       --radius: 8px;
       --gold: #C9A84C;
       --red: #ef4444;
+      color-scheme: dark;
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) var(--background);
+    }
+
+    /* Custom WebKit Scrollbar Styles */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--background);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--muted-foreground);
     }
 
     body {
@@ -362,6 +381,463 @@
     .fselect:focus {
       border-color: var(--primary);
       box-shadow: 0 0 0 2px rgba(230, 57, 70, 0.2);
+    }
+
+    /* Admin Panel Re-architecture Layout */
+    .admin-layout {
+      display: flex;
+      gap: 24px;
+      margin-top: 16px;
+      align-items: flex-start;
+    }
+    
+    .admin-sidebar {
+      width: 230px;
+      flex-shrink: 0;
+      background: #111113;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: sticky;
+      top: 80px;
+    }
+    
+    .admin-sidebar-header {
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .admin-sidebar-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--muted-foreground);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    
+    .admin-sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .admin-sidebar-item {
+      background: none;
+      border: none;
+      color: var(--muted-foreground);
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-align: left;
+      transition: all 0.2s ease;
+      width: 100%;
+    }
+    
+    .admin-sidebar-item:hover {
+      background: #18181b;
+      color: var(--foreground);
+    }
+    
+    .admin-sidebar-item.active {
+      background: rgba(16, 185, 129, 0.08);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.15);
+      font-weight: 600;
+    }
+    
+    .admin-sidebar-item i {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .admin-main-content {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .admin-section {
+      display: none;
+    }
+    
+    .admin-section.active {
+      display: block;
+      animation: adminFadeIn 0.25s ease;
+    }
+    
+    @keyframes adminFadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Responsive layout for admin sidebar */
+    @media (max-width: 900px) {
+      .admin-layout {
+        flex-direction: column;
+        gap: 16px;
+      }
+      .admin-sidebar {
+        width: 100%;
+        position: static;
+        padding: 8px;
+      }
+      .admin-sidebar-header {
+        display: none;
+      }
+      .admin-sidebar-nav {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        width: 100%;
+        gap: 4px;
+      }
+      .admin-sidebar-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 8px 2px;
+        text-align: center;
+        width: 100%;
+        border-radius: 6px;
+      }
+      .admin-sidebar-item i {
+        width: 18px;
+        height: 18px;
+      }
+      .admin-sidebar-item span {
+        font-size: 0.65rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+      }
+    }
+    
+    @media (max-width: 600px) {
+      .admin-sidebar {
+        padding: 4px;
+      }
+      .admin-sidebar-nav {
+        gap: 2px;
+      }
+      .admin-sidebar-item {
+        padding: 10px 2px;
+      }
+      .admin-sidebar-item span {
+        display: none; /* Hide text on mobile for perfect fit */
+      }
+      .admin-sidebar-item i {
+        width: 20px;
+        height: 20px;
+      }
+    }
+
+    /* Sync Logs Accordion UI */
+    .sync-log-item {
+      background: #111113;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 10px;
+      overflow: hidden;
+      transition: all 0.2s ease;
+    }
+    .sync-log-item:hover {
+      border-color: #3f3f46;
+    }
+    .sync-log-item.success {
+      border-left: 4px solid #10b981;
+    }
+    .sync-log-item.failure {
+      border-left: 4px solid #ef4444;
+    }
+    .sync-log-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      cursor: pointer;
+      user-select: none;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .sync-log-header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .sync-log-date-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sync-log-date-icon {
+      color: var(--muted-foreground);
+      display: flex;
+      align-items: center;
+    }
+    .sync-log-date {
+      display: flex;
+      flex-direction: column;
+    }
+    .sync-log-date .date-part {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--foreground);
+    }
+    .sync-log-date .time-part {
+      font-size: 0.72rem;
+      color: var(--muted-foreground);
+    }
+    .sync-log-status-badge {
+      padding: 3px 8px;
+      border-radius: 9999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .sync-log-status-badge.success {
+      background: rgba(16, 185, 129, 0.1);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+    .sync-log-status-badge.failure {
+      background: rgba(239, 68, 68, 0.1);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.25);
+    }
+    .sync-log-header-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .sync-log-header-center .count-main {
+      font-size: 1.1rem;
+      font-weight: 700;
+      font-family: 'Oswald', sans-serif;
+      color: var(--foreground);
+      line-height: 1;
+    }
+    .sync-log-header-center .count-sub {
+      font-size: 0.68rem;
+      color: var(--muted-foreground);
+    }
+    .sync-log-header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .sync-log-pill-summary {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #18181b;
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.7rem;
+      color: var(--muted-foreground);
+    }
+    .sync-log-pill-summary .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .sync-log-pill-summary .dot.green { background: #10b981; }
+    .sync-log-pill-summary .dot.yellow { background: #f59e0b; }
+    .sync-log-pill-summary .dot.red { background: #ef4444; }
+    
+    .sync-log-toggle-icon {
+      color: var(--muted-foreground);
+      transition: transform 0.2s ease;
+      display: flex;
+      align-items: center;
+    }
+    .sync-log-item.expanded .sync-log-toggle-icon {
+      transform: rotate(90deg);
+    }
+    .sync-log-details {
+      display: none;
+      border-top: 1px solid var(--border);
+      background: #09090b;
+      padding: 16px;
+    }
+    .sync-log-item.expanded .sync-log-details {
+      display: block;
+    }
+    
+    /* Tabs inside details */
+    .sync-tabs-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .sync-tabs-list {
+      display: flex;
+      gap: 16px;
+    }
+    .sync-tab-btn {
+      background: none;
+      border: none;
+      color: var(--muted-foreground);
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 8px 4px;
+      cursor: pointer;
+      position: relative;
+      transition: color 0.2s ease;
+    }
+    .sync-tab-btn:hover {
+      color: var(--foreground);
+    }
+    .sync-tab-btn.active {
+      color: #10b981;
+      font-weight: 600;
+    }
+    .sync-tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #10b981;
+    }
+    .sync-tab-content {
+      display: none;
+    }
+    .sync-tab-content.active {
+      display: block;
+    }
+    
+    /* Grid details */
+    .sync-grid-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .sync-grid-card {
+      background: #111113;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .sync-grid-card h4 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted-foreground);
+      margin-bottom: 12px;
+      border-bottom: 1px dashed var(--border);
+      padding-bottom: 6px;
+    }
+    .sync-grid-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      margin-bottom: 8px;
+    }
+    .sync-grid-row:last-child {
+      margin-bottom: 0;
+    }
+    .sync-grid-row .label {
+      color: var(--muted-foreground);
+    }
+    .sync-grid-row .val {
+      font-weight: 600;
+      color: var(--foreground);
+    }
+    
+    /* Copy ID button */
+    .copy-id-btn {
+      background: none;
+      border: none;
+      color: var(--muted-foreground);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      padding: 2px;
+      margin-left: 4px;
+      transition: color 0.2s ease;
+    }
+    .copy-id-btn:hover {
+      color: var(--foreground);
+    }
+    
+    /* Timeline styles */
+    .sync-timeline {
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      padding-left: 20px;
+      margin-top: 8px;
+    }
+    .sync-timeline::before {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 6px;
+      bottom: 6px;
+      width: 2px;
+      background: var(--border);
+    }
+    .sync-timeline-item {
+      position: relative;
+      padding-bottom: 14px;
+      font-size: 0.78rem;
+    }
+    .sync-timeline-item:last-child {
+      padding-bottom: 0;
+    }
+    .sync-timeline-dot {
+      position: absolute;
+      left: -20px;
+      top: 3px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #09090b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+    }
+    .sync-timeline-dot.success { color: #10b981; }
+    .sync-timeline-dot.warning { color: #f59e0b; }
+    .sync-timeline-dot.error { color: #ef4444; }
+    .sync-timeline-dot.info { color: #3b82f6; }
+    
+    .sync-timeline-content {
+      padding-left: 8px;
+    }
+    .sync-timeline-title {
+      font-weight: 600;
+      color: var(--foreground);
+      margin-bottom: 2px;
+    }
+    .sync-timeline-desc {
+      color: var(--muted-foreground);
+      font-size: 0.72rem;
     }
 
     /* match cards */
@@ -2296,23 +2772,25 @@
       font-size: 0.85rem;
       font-weight: 500;
       border-bottom: 1px solid;
+      backdrop-filter: blur(12px);
+      z-index: 100;
     }
 
     .global-banner.warning {
-      background: rgba(245, 158, 11, 0.12);
-      border-color: rgba(245, 158, 11, 0.3);
+      background: #1c1507;
+      border-color: rgba(245, 158, 11, 0.4);
       color: #fbbf24;
     }
 
     .global-banner.success {
-      background: rgba(16, 185, 129, 0.1);
-      border-color: rgba(16, 185, 129, 0.25);
+      background: #071c11;
+      border-color: rgba(16, 185, 129, 0.4);
       color: #34d399;
     }
 
     .global-banner.danger {
-      background: rgba(239, 68, 68, 0.1);
-      border-color: rgba(239, 68, 68, 0.25);
+      background: #1c070a;
+      border-color: rgba(239, 68, 68, 0.4);
       color: #fca5a5;
     }
 
@@ -3009,7 +3487,6 @@
           </div>
           <div class="aright">
             <div class="skeleton" style="height:12px; width:100px; margin-bottom:8px;"></div>
-            <div class="skeleton" style="height:24px; width:70px; border-radius:6px;"></div>
           </div>
         </div>
       </div>
@@ -3021,430 +3498,523 @@
           style="width: 20px; height: 20px; margin-right: 10px; display: inline-block; vertical-align: -3px; color: var(--primary)"></i>Administração
       </div>
 
-      <!-- CARD DE SOLICITAÇÕES PENDENTES -->
-      <div class="card" id="admin-pending-card"
-        style="display:none; border-color:var(--primary); background:rgba(230,57,70,0.02); margin-bottom: 24px;">
-        <div class="sub-title"
-          style="color:var(--primary-hover); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(230,57,70,0.15); padding-bottom:8px; margin-bottom:14px;">
-          <span style="display:flex; align-items:center; gap:6px;"><i data-lucide="clock"
-              style="width:14px;height:14px;"></i> Solicitações Pendentes (Aprovação de Pix)</span>
-          <span class="badge-admin"
-            style="background:rgba(230,57,70,0.1); color:var(--primary-hover); border-color:rgba(230,57,70,0.2);"
-            id="admin-pending-count">0 pendentes</span>
-        </div>
-        <div id="admin-pending-list" style="display:flex; flex-direction:column; gap:8px;">
-          <!-- Pendings rendered here -->
-        </div>
-      </div>
-
-      <!-- CARD DE DEPÓSITOS DE CARTEIRA PENDENTES -->
-      <div class="card" id="admin-wallet-deposits-card"
-        style="display:none; border-color: #10b981; background: rgba(16, 185, 129, 0.02); margin-bottom: 24px;">
-        <div class="sub-title"
-          style="color: #34d399; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(16, 185, 129, 0.15); padding-bottom: 8px; margin-bottom: 14px;">
-          <span style="display: flex; align-items: center; gap: 6px;"><i data-lucide="wallet"
-              style="width: 14px; height: 14px;"></i> Depósitos Pendentes (Carteira)</span>
-          <span class="badge-admin"
-            style="background: rgba(16, 185, 129, 0.1); color: #34d399; border-color: rgba(16, 185, 129, 0.2);"
-            id="admin-wallet-deposits-count">0 pendentes</span>
-        </div>
-        <div id="admin-wallet-deposits-list" style="display: flex; flex-direction: column; gap: 8px;">
-          <!-- Pending wallet deposits rendered here -->
-        </div>
-      </div>
-
-      <!-- CARD DE AJUSTE MANUAL E TRANSAÇÕES -->
-      <div class="card">
-        <div class="sub-title">Ajuste Manual de Saldo</div>
-        <div class="form-row">
-          <select class="inp" id="admin-adjust-psel" style="width: 200px;"></select>
-          <input class="inp" id="admin-adjust-amount" type="number" step="0.01" placeholder="Valor (ex: 10 ou -5)"
-            style="width: 150px;">
-          <input class="inp" id="admin-adjust-desc" placeholder="Motivo do ajuste" style="flex: 1; min-width: 180px;">
-          <button class="btn-add" onclick="adjustBalance()"><i data-lucide="check"
-              style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i>Ajustar
-            Saldo</button>
-        </div>
-
-        <div class="sub-title"
-          style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center;">
-          <span>Saldos Gerais das Carteiras</span>
-          <button class="btn-sm" style="padding: 4px 10px;" onclick="loadAdminWallets()"><i data-lucide="refresh-cw"
-              style="width: 12px; height: 12px;"></i></button>
-        </div>
-
-        <div
-          style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 12px 0; padding: 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 6px;">
-          <div style="text-align: center;">
-            <div
-              style="font-size: 0.7rem; color: var(--muted-foreground); text-transform: uppercase; margin-bottom: 2px;">
-              Saldo em Custódia</div>
-            <strong style="color: #10b981; font-size: 1.15rem; font-family: 'Oswald';" id="admin-wallets-sum-balance">R$
-              0,00</strong>
+      <div class="admin-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="admin-sidebar">
+          <div class="admin-sidebar-header">
+            <span class="admin-sidebar-title">ADMINISTRAÇÃO</span>
           </div>
-          <div style="text-align: center; border-left: 1px solid var(--border); border-right: 1px solid var(--border);">
-            <div
-              style="font-size: 0.7rem; color: var(--muted-foreground); text-transform: uppercase; margin-bottom: 2px;">
-              Total Depositado</div>
-            <strong style="color: var(--foreground); font-size: 1.15rem; font-family: 'Oswald';"
-              id="admin-wallets-sum-deposited">R$ 0,00</strong>
-          </div>
-          <div style="text-align: center;">
-            <div
-              style="font-size: 0.7rem; color: var(--muted-foreground); text-transform: uppercase; margin-bottom: 2px;">
-              Total Rateado</div>
-            <strong style="color: var(--gold); font-size: 1.15rem; font-family: 'Oswald';" id="admin-wallets-sum-won">R$
-              0,00</strong>
-          </div>
-        </div>
+          <nav class="admin-sidebar-nav">
+            <button class="admin-sidebar-item active" data-admin-tab="dashboard" onclick="switchAdminTab('dashboard')" title="Dashboard">
+              <i data-lucide="layout-dashboard"></i>
+              <span>Dashboard</span>
+            </button>
+            <button class="admin-sidebar-item" data-admin-tab="participants" onclick="switchAdminTab('participants')" title="Participantes">
+              <i data-lucide="users"></i>
+              <span>Participantes</span>
+            </button>
+            <button class="admin-sidebar-item" data-admin-tab="challenges" onclick="switchAdminTab('challenges')" title="Desafios">
+              <i data-lucide="trophy"></i>
+              <span>Desafios</span>
+            </button>
+            <button class="admin-sidebar-item" data-admin-tab="finance" onclick="switchAdminTab('finance')" title="Financeiro">
+              <i data-lucide="circle-dollar-sign"></i>
+              <span>Financeiro</span>
+            </button>
+            <button class="admin-sidebar-item" data-admin-tab="communications" onclick="switchAdminTab('communications')" title="Comunicações">
+              <i data-lucide="send"></i>
+              <span>Comunicações</span>
+            </button>
+            <button class="admin-sidebar-item" data-admin-tab="sync" onclick="switchAdminTab('sync')" title="Sincronização">
+              <i data-lucide="refresh-cw"></i>
+              <span>Sincronização</span>
+            </button>
+            <button class="admin-sidebar-item" data-admin-tab="settings" onclick="switchAdminTab('settings')" title="Configurações">
+              <i data-lucide="settings-2"></i>
+              <span>Configurações</span>
+            </button>
+          </nav>
+        </aside>
 
-        <div class="table-container" style="max-height: 250px; overflow-y: auto; margin-bottom: 20px;">
-          <table class="rtable" style="font-size: 0.82rem;">
-            <thead>
-              <tr>
-                <th>Participante</th>
-                <th style="text-align:right;">Saldo Disponível</th>
-                <th style="text-align:right;">Depositado</th>
-                <th style="text-align:right;">Investido</th>
-                <th style="text-align:right;">Ganho</th>
-                <th style="text-align:right;">Retirado</th>
-              </tr>
-            </thead>
-            <tbody id="admin-wallets-body">
-              <tr>
-                <td colspan="6" class="empty" style="text-align: center;">Carregando saldos...</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="sub-title"
-          style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center;">
-          <span>Histórico Geral de Transações Financeiras</span>
-          <button class="btn-sm" style="padding: 4px 10px;" onclick="loadAdminTransactions()"><i
-              data-lucide="refresh-cw" style="width: 12px; height: 12px;"></i></button>
-        </div>
-        <div class="table-container" style="max-height: 250px; overflow-y: auto;">
-          <table class="rtable" style="font-size: 0.82rem;">
-            <thead>
-              <tr>
-                <th>Data</th>
-                <th>Participante</th>
-                <th>Tipo</th>
-                <th>Valor</th>
-                <th>Descrição</th>
-              </tr>
-            </thead>
-            <tbody id="admin-transactions-body">
-              <tr>
-                <td colspan="5" class="empty" style="text-align: center;">Nenhuma transação registrada.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- CARD DO GERENCIADOR DE DESAFIOS -->
-      <div class="card">
-        <div class="sub-title">Gerenciador de Desafios da Partida</div>
-        <div style="margin-bottom: 12px;">
-          <input class="inp" id="admin-challenges-search" placeholder="🔍 Buscar por time ou partida..." style="width: 100%;" oninput="renderAdminChallengesTable()">
-        </div>
-        <div class="table-container" style="max-height: 350px; overflow-y: auto;">
-          <table class="rtable" style="font-size: 0.82rem;">
-            <thead>
-              <tr>
-                <th>Jogo</th>
-                <th style="text-align:center;">Inscritos</th>
-                <th style="text-align:center;">Status</th>
-                <th style="text-align:center;">Resultado Real</th>
-                <th style="text-align:right;">Ações</th>
-              </tr>
-            </thead>
-            <tbody id="admin-challenges-body">
-              <tr>
-                <td colspan="5" class="empty" style="text-align: center;">Carregando desafios...</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="sub-title">Adicionar Participante</div>
-        <div class="form-row">
-          <input class="inp" id="new-name" placeholder="Nome" style="flex:1;min-width:140px"
-            onkeydown="if(event.key==='Enter')addParticipant()">
-          <input class="inp" id="new-pin" placeholder="PIN (4+ dígitos)" style="width:150px" maxlength="8"
-            inputmode="numeric">
-          <input class="inp" id="new-phone" placeholder="WhatsApp: (00) 00000-0000" style="width:210px" maxlength="15"
-            inputmode="tel" oninput="applyPhoneMask(this)">
-          <input class="inp" id="new-cotas" placeholder="Cotas" type="number" min="0" value="1" style="width:90px"
-            onkeydown="if(event.key==='Enter')addParticipant()">
-          <select class="inp" id="new-referred-by" style="width:200px" title="Quem indicou este participante">
-            <option value="">Quem indicou? (Ninguém)</option>
-          </select>
-          <button class="btn-add" onclick="addParticipant()"><i data-lucide="plus"
-              style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i>Adicionar</button>
-        </div>
-        <div class="pgrid" id="participants-list"></div>
-      </div>
-      <div class="card">
-        <div class="sub-title">Alterar PIN de Admin</div>
-        <div class="form-row">
-          <input class="inp" id="admin-new-pin" placeholder="Novo PIN" style="width:180px" maxlength="8"
-            inputmode="numeric">
-          <button class="btn-add" onclick="changeAdminPin()"><i data-lucide="key"
-              style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i>Alterar</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="sub-title">Valor da Cota (R$)</div>
-        <div class="form-row">
-          <input class="inp" id="admin-arrecadado" placeholder="Ex: 25" style="width:180px" type="number" min="0">
-          <button class="btn-add" onclick="saveArrecadado()"><i data-lucide="save"
-              style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i>Salvar
-            Valor</button>
-        </div>
-      </div>
-
-      <!-- DISPARO DE NOTIFICAÇÃO PUSH (ADMIN) -->
-      <div class="card" style="border-color: rgba(96, 165, 250, 0.4); background: rgba(96, 165, 250, 0.01);">
-        <div class="sub-title" style="color: #60a5fa; display:flex; align-items:center; gap:6px; margin-bottom:10px;">
-          <i data-lucide="send" style="width:14px; height:14px;"></i> Enviar Notificação Push
-        </div>
-        <div style="font-size: 0.8rem; color: var(--muted-foreground); margin-bottom: 14px;">
-          Envie alertas instantâneos diretamente para as telas de todos os participantes cadastrados e inscritos no
-          sistema.
-        </div>
-        <div class="form-row" style="flex-direction: column; align-items: stretch; gap: 10px;">
-          <input class="inp" id="push-title" placeholder="Título (Ex: Novo Resultado Disponível!)" style="width:100%">
-          <textarea class="inp" id="push-body"
-            placeholder="Mensagem da notificação (Ex: Confira o placar do jogo do Brasil no ranking.)"
-            style="width:100%; height:64px; resize:none; font-family:inherit;"></textarea>
-          <input class="inp" id="push-url" placeholder="Link para abrir ao clicar (opcional - Ex: /#jogos)"
-            style="width:100%">
-          <button class="btn-add" id="btn-send-push" onclick="sendPushNotification()"
-            style="background:#2563eb; border-color:#3b82f6; color:#fff; align-self: flex-start; display:flex; align-items:center; gap:6px; margin:0;">
-            <i data-lucide="bell-ring"></i> Enviar para Todos
-          </button>
-        </div>
-      </div>
-
-      <!-- CRONÔMETRO DE TOPO (COUNTDOWN) -->
-      <div class="card" style="border-color: rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.01);">
-        <div class="sub-title" style="color: #f59e0b; display:flex; align-items:center; gap:6px; margin-bottom:10px;">
-          <i data-lucide="timer" style="width:14px; height:14px;"></i> Cronômetro do Topo (Banner)
-        </div>
-        <div style="font-size: 0.8rem; color: var(--muted-foreground); margin-bottom: 14px;">
-          Configure um cronômetro com título e corpo personalizados no banner do topo do site.
-        </div>
-        <div class="form-row" style="flex-direction: column; align-items: stretch; gap: 12px;">
-          <div style="display:flex; flex-direction:column; gap:4px;">
-            <label style="font-size:0.75rem; color:var(--muted-foreground); font-weight:600;">Título do Cronômetro</label>
-            <input class="inp" id="admin-countdown-title" placeholder="Ex: A ESTREIA DO BOLÃO COMEÇA EM:" style="width:100%">
-          </div>
-          <div style="display:flex; flex-direction:column; gap:4px;">
-            <label style="font-size:0.75rem; color:var(--muted-foreground); font-weight:600;">Texto Secundário (Corpo)</label>
-            <input class="inp" id="admin-countdown-body" placeholder="Ex: (Apostas anteriores não contam para o Ranking)" style="width:100%">
-          </div>
-          <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end;">
-            <div style="display:flex; flex-direction:column; gap:4px; flex:1; min-width:200px;">
-              <label style="font-size:0.75rem; color:var(--muted-foreground); font-weight:600;">Data e Hora Alvo (Local)</label>
-              <input class="inp" id="admin-countdown-target" type="datetime-local" style="width:100%">
+        <!-- Main Content Area -->
+        <main class="admin-main-content">
+          
+          <!-- SEÇÃO: DASHBOARD -->
+          <div class="admin-section active" id="admin-sec-dashboard">
+            <!-- CARD DE SOLICITAÇÕES PENDENTES -->
+            <div class="card" id="admin-pending-card"
+              style="display:none; border-color:var(--primary); background:rgba(230,57,70,0.02); margin-bottom: 24px;">
+              <div class="sub-title"
+                style="color:var(--primary-hover); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(230,57,70,0.15); padding-bottom:8px; margin-bottom:14px;">
+                <span style="display:flex; align-items:center; gap:6px;"><i data-lucide="clock"
+                    style="width:14px;height:14px;"></i> Solicitações Pendentes (Aprovação de Pix)</span>
+                <span class="badge-admin"
+                  style="background:rgba(230,57,70,0.1); color:var(--primary-hover); border-color:rgba(230,57,70,0.2);"
+                  id="admin-pending-count">0 pendentes</span>
+              </div>
+              <div id="admin-pending-list" style="display:flex; flex-direction:column; gap:8px;">
+                <!-- Pendings rendered here -->
+              </div>
             </div>
-            <div class="switch-container" style="height:38px; display:flex; align-items:center; gap:8px;">
-              <label class="switch">
-                <input type="checkbox" id="admin-countdown-active">
-                <span class="slider"></span>
-              </label>
-              <span class="switch-label">Exibir Banner Ativo</span>
+
+            <!-- CARD DE DEPÓSITOS DE CARTEIRA PENDENTES -->
+            <div class="card" id="admin-wallet-deposits-card"
+              style="display:none; border-color: #10b981; background: rgba(16, 185, 129, 0.02); margin-bottom: 24px;">
+              <div class="sub-title"
+                style="color: #34d399; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(16, 185, 129, 0.15); padding-bottom: 8px; margin-bottom: 14px;">
+                <span style="display: flex; align-items: center; gap: 6px;"><i data-lucide="wallet"
+                    style="width: 14px; height: 14px;"></i> Depósitos Pendentes (Carteira)</span>
+                <span class="badge-admin"
+                  style="background: rgba(16, 185, 129, 0.1); color: #34d399; border-color: rgba(16, 185, 129, 0.2);"
+                  id="admin-wallet-deposits-count">0 pendentes</span>
+              </div>
+              <div id="admin-wallet-deposits-list" style="display: flex; flex-direction: column; gap: 8px;">
+                <!-- Pending wallet deposits rendered here -->
+              </div>
+            </div>
+
+            <!-- CARD: SALDOS EM CUSTÓDIA RESUMO (DASHBOARD) -->
+            <div class="card" style="background: linear-gradient(135deg, rgba(24, 24, 27, 0.4) 0%, rgba(9, 9, 11, 0.6) 100%);">
+              <div class="sub-title">Visão Geral Financeira</div>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 12px 0; padding: 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 6px;">
+                <div style="text-align: center;">
+                  <div style="font-size: 0.7rem; color: var(--muted-foreground); text-transform: uppercase; margin-bottom: 2px;">Saldo em Custódia</div>
+                  <strong style="color: #10b981; font-size: 1.15rem; font-family: 'Oswald';" id="admin-dash-sum-balance">R$ 0,00</strong>
+                </div>
+                <div style="text-align: center; border-left: 1px solid var(--border); border-right: 1px solid var(--border);">
+                  <div style="font-size: 0.7rem; color: var(--muted-foreground); text-transform: uppercase; margin-bottom: 2px;">Total Depositado</div>
+                  <strong style="color: var(--foreground); font-size: 1.15rem; font-family: 'Oswald';" id="admin-dash-sum-deposited">R$ 0,00</strong>
+                </div>
+                <div style="text-align: center;">
+                  <div style="font-size: 0.7rem; color: var(--muted-foreground); text-transform: uppercase; margin-bottom: 2px;">Total Rateado</div>
+                  <strong style="color: var(--gold); font-size: 1.15rem; font-family: 'Oswald';" id="admin-dash-sum-won">R$ 0,00</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- CARD DE APOSTAS RECENTES -->
+            <div class="card">
+              <div class="sub-title" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>Log de Apostas Recentes</span>
+                <button class="btn-sm" style="padding: 4px 10px;" onclick="loadAdmin()"><i data-lucide="refresh-cw"
+                    style="width:12px;height:12px"></i></button>
+              </div>
+              <div class="table-container" style="max-height: 350px; overflow-y: auto;">
+                <table class="rtable" style="font-size: 0.85rem;">
+                  <thead>
+                    <tr>
+                      <th>Data/Hora</th>
+                      <th>Quem</th>
+                      <th>Jogo</th>
+                      <th>Placar</th>
+                    </tr>
+                  </thead>
+                  <tbody id="bets-log-body">
+                    <tr>
+                      <td colspan="4" class="empty" style="text-align:center">Nenhuma aposta registrada.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-          <button class="btn-add" onclick="saveCountdownConfig()"
-            style="background: #d97706; border-color: #f59e0b; color: #fff; align-self: flex-start; display:flex; align-items:center; gap:6px; margin:0;">
-            <i data-lucide="save" style="width:14px;height:14px;"></i> Salvar Configuração
-          </button>
-        </div>
-      </div>
 
-      <!-- BANNERS GLOBAIS (ADMIN) -->
-      <div class="card" style="border-color: rgba(167,139,250,0.35); background: rgba(167,139,250,0.01);">
-        <div class="sub-title" style="color: #a78bfa; display:flex; align-items:center; gap:6px; margin-bottom:10px;">
-          <i data-lucide="megaphone" style="width:14px; height:14px;"></i> Banners Globais
-        </div>
-        <div style="font-size: 0.8rem; color: var(--muted-foreground); margin-bottom: 14px;">
-          Crie avisos que aparecem para todos os participantes em todo o app. O usuário pode fechar, mas volta ao ver se
-          um novo banner for publicado.
-        </div>
-        <div class="form-row" style="flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 18px;">
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <select class="inp" id="banner-type" style="width:160px;">
-              <option value="warning">⚠️ Warning (Aviso)</option>
-              <option value="success">✅ Success (Sucesso)</option>
-              <option value="danger">🚨 Danger (Perigo)</option>
-            </select>
-            <input class="inp" id="banner-message" placeholder="Mensagem do banner para todos os usuários..."
-              style="flex:1; min-width:200px;" onkeydown="if(event.key==='Enter')publishBanner()">
+          <!-- SEÇÃO: PARTICIPANTES -->
+          <div class="admin-section" id="admin-sec-participants">
+            <div class="card">
+              <div class="sub-title">Adicionar Participante</div>
+              <div class="form-row">
+                <input class="inp" id="new-name" placeholder="Nome" style="flex:1;min-width:140px"
+                  onkeydown="if(event.key==='Enter')addParticipant()">
+                <input class="inp" id="new-pin" placeholder="PIN (4+ dígitos)" style="width:150px" maxlength="8"
+                  inputmode="numeric">
+                <input class="inp" id="new-phone" placeholder="WhatsApp: (00) 00000-0000" style="width:210px" maxlength="15"
+                  inputmode="tel" oninput="applyPhoneMask(this)">
+                <input class="inp" id="new-cotas" placeholder="Cotas" type="number" min="0" value="1" style="width:90px"
+                  onkeydown="if(event.key==='Enter')addParticipant()">
+                <select class="inp" id="new-referred-by" style="width:200px" title="Quem indicou este participante">
+                  <option value="">Quem indicou? (Ninguém)</option>
+                </select>
+                <button class="btn-add" onclick="addParticipant()"><i data-lucide="plus"
+                    style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i>Adicionar</button>
+              </div>
+              <div class="pgrid" id="participants-list"></div>
+            </div>
           </div>
-          <button class="btn-add" id="btn-publish-banner" onclick="publishBanner()"
-            style="background: #7c3aed; border-color: #8b5cf6; color: #fff; align-self: flex-start; display:flex; align-items:center; gap:6px; margin:0;">
-            <i data-lucide="megaphone" style="width:14px;height:14px;"></i> Publicar Banner
-          </button>
-        </div>
-        <div id="admin-banners-list" style="display:flex; flex-direction:column; gap:8px;">
-          <div style="font-size:0.8rem; color:var(--muted-foreground); text-align:center; padding:10px;">Carregando...
+
+          <!-- SEÇÃO: DESAFIOS -->
+          <div class="admin-section" id="admin-sec-challenges">
+            <div class="card">
+              <div class="sub-title">Gerenciador de Desafios da Partida</div>
+              <div style="margin-bottom: 12px;">
+                <input class="inp" id="admin-challenges-search" placeholder="🔍 Buscar por time ou partida..." style="width: 100%;" oninput="renderAdminChallengesTable()">
+              </div>
+              <div class="table-container" style="max-height: 350px; overflow-y: auto;">
+                <table class="rtable" style="font-size: 0.82rem;">
+                  <thead>
+                    <tr>
+                      <th>Jogo</th>
+                      <th style="text-align:center;">Inscritos</th>
+                      <th style="text-align:center;">Status</th>
+                      <th style="text-align:center;">Resultado Real</th>
+                      <th style="text-align:right;">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-challenges-body">
+                    <tr>
+                      <td colspan="5" class="empty" style="text-align: center;">Carregando desafios...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div class="card">
-        <div class="sub-title" style="display:flex; justify-content:space-between; align-items:center;">
-          <span>Log de Apostas Recentes</span>
-          <button class="btn-sm" style="padding: 4px 10px;" onclick="loadAdmin()"><i data-lucide="refresh-cw"
-              style="width:12px;height:12px"></i></button>
-        </div>
-        <div class="table-container" style="max-height: 350px; overflow-y: auto;">
-          <table class="rtable" style="font-size: 0.85rem;">
-            <thead>
-              <tr>
-                <th>Data/Hora</th>
-                <th>Quem</th>
-                <th>Jogo</th>
-                <th>Placar</th>
-              </tr>
-            </thead>
-            <tbody id="bets-log-body">
-              <tr>
-                <td colspan="4" class="empty" style="text-align:center">Nenhuma aposta registrada.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+          <!-- SEÇÃO: FINANCEIRO -->
+          <div class="admin-section" id="admin-sec-finance">
+            <div class="card">
+              <div class="sub-title">Ajuste Manual de Saldo</div>
+              <div class="form-row">
+                <select class="inp" id="admin-adjust-psel" style="width: 200px;"></select>
+                <input class="inp" id="admin-adjust-amount" type="number" step="0.01" placeholder="Valor (ex: 10 ou -5)"
+                  style="width: 150px;">
+                <input class="inp" id="admin-adjust-desc" placeholder="Motivo do ajuste" style="flex: 1; min-width: 180px;">
+                <button class="btn-add" onclick="adjustBalance()"><i data-lucide="check"
+                    style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i>Ajustar
+                  Saldo</button>
+              </div>
 
-      <!-- LOG DE COMUNICAÇÕES (ADMIN) -->
-      <div class="card" style="border-color: rgba(100,116,139,0.3);">
-        <div class="sub-title" style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="display:flex; align-items:center; gap:6px;">
-            <i data-lucide="activity" style="width:14px;height:14px;color:var(--muted-foreground)"></i>
-            Log de Comunicações
-            <span style="font-size:0.72rem; color:var(--muted-foreground); font-weight:400;">(10 dias)</span>
-          </span>
-          <button class="btn-sm" style="padding: 4px 10px;" onclick="loadCommLog()"><i data-lucide="refresh-cw"
-              style="width:12px;height:12px"></i></button>
-        </div>
-        <div class="table-container" style="max-height: 300px; overflow-y: auto;">
-          <table class="rtable" style="font-size: 0.82rem;">
-            <thead>
-              <tr>
-                <th style="width:110px">Data/Hora</th>
-                <th style="width:90px">Tipo</th>
-                <th>Mensagem</th>
-                <th style="width:80px">Detalhes</th>
-              </tr>
-            </thead>
-            <tbody id="comm-log-body">
-              <tr>
-                <td colspan="4" class="empty" style="text-align:center">Carregando...</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+              <div class="sub-title"
+                style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center;">
+                <span>Saldos Gerais das Carteiras</span>
+                <button class="btn-sm" style="padding: 4px 10px;" onclick="loadAdminWallets()"><i data-lucide="refresh-cw"
+                    style="width: 12px; height: 12px;"></i></button>
+              </div>
 
-      <!-- CARD DA INTEGRAÇÃO FOOTBALL-DATA API -->
-      <div class="card" style="border-color: rgba(16, 185, 129, 0.35); background: rgba(16, 185, 129, 0.01);">
-        <div class="sub-title" style="color: #34d399; display: flex; align-items: center; gap: 6px; margin-bottom: 10px;">
-          <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
-          Integração Football-Data.org API
-        </div>
-        <div style="font-size: 0.8rem; color: var(--muted-foreground); margin-bottom: 14px; line-height: 1.4;">
-          Sincronize partidas, status, escudos e placares automaticamente com a Football-Data.org API (Copa do Mundo - Competição 2000). Os resultados manuais do administrador têm prioridade e nunca são sobrescritos.
-        </div>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 12px 0; padding: 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 6px;">
+                <div style="text-align: center;">
+                  <div style="font-size: 0.7rem; color: var(--muted-foreground); text-transform: uppercase; margin-bottom: 2px;">
+                    Saldo em Custódia</div>
+                  <strong style="color: #10b981; font-size: 1.15rem; font-family: 'Oswald';" id="admin-wallets-sum-balance">R$ 0,00</strong>
+                </div>
+                <div style="text-align: center; border-left: 1px solid var(--border); border-right: 1px solid var(--border);">
+                  <div style="font-size: 0.7rem; color: var(--muted-foreground); text-transform: uppercase; margin-bottom: 2px;">
+                    Total Depositado</div>
+                  <strong style="color: var(--foreground); font-size: 1.15rem; font-family: 'Oswald';"
+                    id="admin-wallets-sum-deposited">R$ 0,00</strong>
+                </div>
+                <div style="text-align: center;">
+                  <div style="font-size: 0.7rem; color: var(--muted-foreground); text-transform: uppercase; margin-bottom: 2px;">
+                    Total Rateado</div>
+                  <strong style="color: var(--gold); font-size: 1.15rem; font-family: 'Oswald';" id="admin-wallets-sum-won">R$ 0,00</strong>
+                </div>
+              </div>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 18px; padding: 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 6px;">
-          <div>
-            <div style="font-size: 0.7rem; color: var(--muted-foreground); text-transform: uppercase; margin-bottom: 2px;">Status da Integração</div>
-            <strong id="api-config-status" style="font-size: 1rem;">Verificando...</strong>
+              <div class="table-container" style="max-height: 250px; overflow-y: auto; margin-bottom: 20px;">
+                <table class="rtable" style="font-size: 0.82rem;">
+                  <thead>
+                    <tr>
+                      <th>Participante</th>
+                      <th style="text-align:right;">Saldo Disponível</th>
+                      <th style="text-align:right;">Depositado</th>
+                      <th style="text-align:right;">Investido</th>
+                      <th style="text-align:right;">Ganho</th>
+                      <th style="text-align:right;">Retirado</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-wallets-body">
+                    <tr>
+                      <td colspan="6" class="empty" style="text-align: center;">Carregando saldos...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="sub-title"
+                style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center;">
+                <span>Histórico Geral de Transações Financeiras</span>
+                <button class="btn-sm" style="padding: 4px 10px;" onclick="loadAdminTransactions()"><i
+                    data-lucide="refresh-cw" style="width: 12px; height: 12px;"></i></button>
+              </div>
+              <div class="table-container" style="max-height: 250px; overflow-y: auto;">
+                <table class="rtable" style="font-size: 0.82rem;">
+                  <thead>
+                    <tr>
+                      <th>Data</th>
+                      <th>Participante</th>
+                      <th>Tipo</th>
+                      <th>Valor</th>
+                      <th>Descrição</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-transactions-body">
+                    <tr>
+                      <td colspan="5" class="empty" style="text-align: center;">Nenhuma transação registrada.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
-          <div>
-            <div style="font-size: 0.7rem; color: var(--muted-foreground); text-transform: uppercase; margin-bottom: 2px;">Última Sincronização</div>
-            <strong id="api-last-sync" style="font-size: 1rem; color: var(--foreground);">Nunca</strong>
+
+          <!-- SEÇÃO: COMUNICAÇÕES -->
+          <div class="admin-section" id="admin-sec-communications">
+            <!-- DISPARO DE NOTIFICAÇÃO PUSH (ADMIN) -->
+            <div class="card" style="border-color: rgba(96, 165, 250, 0.4); background: rgba(96, 165, 250, 0.01);">
+              <div class="sub-title" style="color: #60a5fa; display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+                <i data-lucide="send" style="width:14px; height:14px;"></i> Enviar Notificação Push
+              </div>
+              <div style="font-size: 0.8rem; color: var(--muted-foreground); margin-bottom: 14px;">
+                Envie alertas instantâneos diretamente para as telas de todos os participantes cadastrados e inscritos no sistema.
+              </div>
+              <div class="form-row" style="flex-direction: column; align-items: stretch; gap: 10px;">
+                <input class="inp" id="push-title" placeholder="Título (Ex: Novo Resultado Disponível!)" style="width:100%">
+                <textarea class="inp" id="push-body"
+                  placeholder="Mensagem da notificação (Ex: Confira o placar do jogo do Brasil no ranking.)"
+                  style="width:100%; height:64px; resize:none; font-family:inherit;"></textarea>
+                <input class="inp" id="push-url" placeholder="Link para abrir ao clicar (opcional - Ex: /#jogos)"
+                  style="width:100%">
+                <button class="btn-add" id="btn-send-push" onclick="sendPushNotification()"
+                  style="background:#2563eb; border-color:#3b82f6; color:#fff; align-self: flex-start; display:flex; align-items:center; gap:6px; margin:0;">
+                  <i data-lucide="bell-ring"></i> Enviar para Todos
+                </button>
+              </div>
+            </div>
+
+            <!-- LOG DE COMUNICAÇÕES (ADMIN) -->
+            <div class="card" style="border-color: rgba(100,116,139,0.3);">
+              <div class="sub-title" style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="activity" style="width:14px;height:14px;color:var(--muted-foreground)"></i> Log de Comunicações <span style="font-size:0.72rem; color:var(--muted-foreground); font-weight:400;">(10 dias)</span>
+                </span>
+                <button class="btn-sm" style="padding: 4px 10px;" onclick="loadCommLog()"><i data-lucide="refresh-cw"
+                    style="width:12px;height:12px"></i></button>
+              </div>
+              <div class="table-container" style="max-height: 300px; overflow-y: auto;">
+                <table class="rtable" style="font-size: 0.82rem;">
+                  <thead>
+                    <tr>
+                      <th style="width:110px">Data/Hora</th>
+                      <th style="width:90px">Tipo</th>
+                      <th>Mensagem</th>
+                      <th style="width:80px">Detalhes</th>
+                    </tr>
+                  </thead>
+                  <tbody id="comm-log-body">
+                    <tr>
+                      <td colspan="4" class="empty" style="text-align:center">Carregando...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
-          <div>
-            <div style="font-size: 0.7rem; color: var(--muted-foreground); text-transform: uppercase; margin-bottom: 2px;">Último Sucesso</div>
-            <strong id="api-last-success" style="font-size: 1rem; color: var(--gold);">Nunca</strong>
+
+          <!-- SEÇÃO: SINCRONIZAÇÃO -->
+          <div class="admin-section" id="admin-sec-sync">
+            <!-- KPI Cards Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px;">
+              <!-- KPI 1 -->
+              <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.15); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 4px;">
+                <div style="font-size: 0.72rem; color: #34d399; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                  <i data-lucide="refresh-cw" style="width:12px; height:12px;"></i> Sincronizações (24h)
+                </div>
+                <strong style="font-size: 1.8rem; font-family: 'Oswald', sans-serif; font-weight: 700; line-height: 1.1; margin-top: 4px;" id="kpi-sync-count">0</strong>
+                <span style="font-size: 0.68rem; color: var(--muted-foreground);" id="kpi-sync-success-rate">100% sucesso</span>
+              </div>
+              <!-- KPI 2 -->
+              <div style="background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 4px;">
+                <div style="font-size: 0.72rem; color: #60a5fa; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                  <i data-lucide="check-circle" style="width:12px; height:12px;"></i> Partidas Sincronizadas
+                </div>
+                <strong style="font-size: 1.8rem; font-family: 'Oswald', sans-serif; font-weight: 700; line-height: 1.1; margin-top: 4px;" id="kpi-sync-updated">0</strong>
+                <span style="font-size: 0.68rem; color: var(--muted-foreground);">Últimos 20 logs</span>
+              </div>
+              <!-- KPI 3 -->
+              <div style="background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.15); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 4px;">
+                <div style="font-size: 0.72rem; color: #fbbf24; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                  <i data-lucide="alert-triangle" style="width:12px; height:12px;"></i> Partidas Ignoradas
+                </div>
+                <strong style="font-size: 1.8rem; font-family: 'Oswald', sans-serif; font-weight: 700; line-height: 1.1; margin-top: 4px;" id="kpi-sync-ignored">0</strong>
+                <span style="font-size: 0.68rem; color: var(--muted-foreground);">Ajustes manuais</span>
+              </div>
+              <!-- KPI 4 -->
+              <div style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 4px;">
+                <div style="font-size: 0.72rem; color: #f87171; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                  <i data-lucide="x-circle" style="width:12px; height:12px;"></i> Erros
+                </div>
+                <strong style="font-size: 1.8rem; font-family: 'Oswald', sans-serif; font-weight: 700; line-height: 1.1; margin-top: 4px;" id="kpi-sync-errors">0</strong>
+                <span style="font-size: 0.68rem; color: var(--muted-foreground);">Falhas de conexão</span>
+              </div>
+            </div>
+
+            <!-- CARD DA INTEGRAÇÃO FOOTBALL-DATA API -->
+            <div class="card" style="border-color: rgba(16, 185, 129, 0.35); background: rgba(16, 185, 129, 0.01);">
+              <div class="sub-title" style="color: #34d399; display: flex; align-items: center; gap: 6px; margin-bottom: 10px;">
+                <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i> Integração Football-Data.org API
+              </div>
+              <div style="font-size: 0.8rem; color: var(--muted-foreground); margin-bottom: 14px; line-height: 1.4;">
+                Sincronize partidas, status, escudos e placares automaticamente com a Football-Data.org API (Copa do Mundo - Competição 2000). Os resultados manuais do administrador têm prioridade e nunca são sobrescritos.
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 18px; padding: 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 6px;">
+                <div>
+                  <div style="font-size: 0.7rem; color: var(--muted-foreground); text-transform: uppercase; margin-bottom: 2px;">Status da Integração</div>
+                  <strong id="api-config-status" style="font-size: 1rem;">Verificando...</strong>
+                </div>
+                <div>
+                  <div style="font-size: 0.7rem; color: var(--muted-foreground); text-transform: uppercase; margin-bottom: 2px;">Última Sincronização</div>
+                  <strong id="api-last-sync" style="font-size: 1rem; color: var(--foreground);">Nunca</strong>
+                </div>
+                <div>
+                  <div style="font-size: 0.7rem; color: var(--muted-foreground); text-transform: uppercase; margin-bottom: 2px;">Último Sucesso</div>
+                  <strong id="api-last-success" style="font-size: 1rem; color: var(--gold);">Nunca</strong>
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
+                <button class="btn-add" id="btn-sync-api" onclick="forceApiSync()" style="background: #10b981; border-color: #34d399; color: #fff; margin: 0; display: inline-flex; align-items: center; gap: 6px;">
+                  <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i> Sincronizar Resultados Agora
+                </button>
+                <button class="btn-add" id="btn-reprocess-ranking" onclick="reprocessAllScores()" style="background: rgba(245, 158, 11, 0.15); border-color: #f59e0b; color: #f59e0b; margin: 0; display: inline-flex; align-items: center; gap: 6px;" title="Reprocessa todas as pontuações e pagamentos de desafios do bolão">
+                  <i data-lucide="calculator" style="width: 14px; height: 14px;"></i> Reprocessar Pontuações & Ranking
+                </button>
+              </div>
+
+              <div class="sub-title" style="font-size: 0.85rem; margin-bottom: 12px;">Histórico de Sincronizações Recentes</div>
+              <div id="api-sync-logs-list" style="max-height: 380px; overflow-y: auto; padding-right: 4px;">
+                <div class="empty" style="text-align: center; font-size: 0.8rem; color: var(--muted-foreground); padding: 20px;">
+                  Carregando histórico...
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
-          <button class="btn-add" id="btn-sync-api" onclick="forceApiSync()" style="background: #10b981; border-color: #34d399; color: #fff; margin: 0; display: inline-flex; align-items: center; gap: 6px;">
-            <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i> Sincronizar Resultados Agora
-          </button>
-          <button class="btn-add" id="btn-reprocess-ranking" onclick="reprocessAllScores()" style="background: rgba(245, 158, 11, 0.15); border-color: #f59e0b; color: #f59e0b; margin: 0; display: inline-flex; align-items: center; gap: 6px;" title="Reprocessa todas as pontuações e pagamentos de desafios do bolão">
-            <i data-lucide="calculator" style="width: 14px; height: 14px;"></i> Reprocessar Pontuações & Ranking
-          </button>
-        </div>
+          <!-- SEÇÃO: CONFIGURAÇÕES -->
+          <div class="admin-section" id="admin-sec-settings">
+            <!-- CRONÔMETRO DE TOPO (COUNTDOWN) -->
+            <div class="card" style="border-color: rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.01);">
+              <div class="sub-title" style="color: #f59e0b; display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+                <i data-lucide="timer" style="width:14px; height:14px;"></i> Cronômetro do Topo (Banner)
+              </div>
+              <div style="font-size: 0.8rem; color: var(--muted-foreground); margin-bottom: 14px;">
+                Configure um cronômetro com título e corpo personalizados no banner do topo do site.
+              </div>
+              <div class="form-row" style="flex-direction: column; align-items: stretch; gap: 12px;">
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                  <label style="font-size:0.75rem; color:var(--muted-foreground); font-weight:600;">Título do Cronômetro</label>
+                  <input class="inp" id="admin-countdown-title" placeholder="Ex: A ESTREIA DO BOLÃO COMEÇA EM:" style="width:100%">
+                </div>
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                  <label style="font-size:0.75rem; color:var(--muted-foreground); font-weight:600;">Texto Secundário (Corpo)</label>
+                  <input class="inp" id="admin-countdown-body" placeholder="Ex: (Apostas anteriores não contam para o Ranking)" style="width:100%">
+                </div>
+                <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end;">
+                  <div style="display:flex; flex-direction:column; gap:4px; flex:1; min-width:200px;">
+                    <label style="font-size:0.75rem; color:var(--muted-foreground); font-weight:600;">Data e Hora Alvo (Local)</label>
+                    <input class="inp" id="admin-countdown-target" type="datetime-local" style="width:100%">
+                  </div>
+                  <div class="switch-container" style="height:38px; display:flex; align-items:center; gap:8px;">
+                    <label class="switch">
+                      <input type="checkbox" id="admin-countdown-active">
+                      <span class="slider"></span>
+                    </label>
+                    <span class="switch-label">Exibir Banner Ativo</span>
+                  </div>
+                </div>
+                <button class="btn-add" onclick="saveCountdownConfig()"
+                  style="background: #d97706; border-color: #f59e0b; color: #fff; align-self: flex-start; display:flex; align-items:center; gap:6px; margin:0;">
+                  <i data-lucide="save" style="width:14px;height:14px;"></i> Salvar Configuração
+                </button>
+              </div>
+            </div>
 
-        <div class="sub-title" style="font-size: 0.85rem; margin-bottom: 8px;">Histórico de Sincronizações Recentes</div>
-        <div class="table-container" style="max-height: 180px; overflow-y: auto;">
-          <table class="rtable" style="font-size: 0.78rem;">
-            <thead>
-              <tr>
-                <th style="width: 120px;">Data/Hora</th>
-                <th style="width: 90px; text-align: center;">Status</th>
-                <th style="width: 90px; text-align: center;">Partidas Sync</th>
-                <th>Detalhes</th>
-              </tr>
-            </thead>
-            <tbody id="api-sync-logs-body">
-              <tr>
-                <td colspan="4" class="empty" style="text-align: center;">Carregando histórico...</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+            <!-- BANNERS GLOBAIS (ADMIN) -->
+            <div class="card" style="border-color: rgba(167,139,250,0.35); background: rgba(167,139,250,0.01);">
+              <div class="sub-title" style="color: #a78bfa; display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+                <i data-lucide="megaphone" style="width:14px; height:14px;"></i> Banners Globais
+              </div>
+              <div style="font-size: 0.8rem; color: var(--muted-foreground); margin-bottom: 14px;">
+                Crie avisos que aparecem para todos os participantes em todo o app. O usuário pode fechar, mas volta ao ver se um novo banner for publicado.
+              </div>
+              <div class="form-row" style="flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 18px;">
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                  <select class="inp" id="banner-type" style="width:160px;">
+                    <option value="warning">⚠️ Warning (Aviso)</option>
+                    <option value="success">✅ Success (Sucesso)</option>
+                    <option value="danger">🚨 Danger (Perigo)</option>
+                  </select>
+                  <input class="inp" id="banner-message" placeholder="Mensagem do banner para todos os usuários..."
+                    style="flex:1; min-width:200px;" onkeydown="if(event.key==='Enter')publishBanner()">
+                </div>
+                <button class="btn-add" id="btn-publish-banner" onclick="publishBanner()"
+                  style="background: #7c3aed; border-color: #8b5cf6; color: #fff; align-self: flex-start; display:flex; align-items:center; gap:6px; margin:0;">
+                  <i data-lucide="megaphone" style="width:14px;height:14px;"></i> Publicar Banner
+                </button>
+              </div>
+              <div id="admin-banners-list" style="display:flex; flex-direction:column; gap:8px;">
+                <div style="font-size:0.8rem; color:var(--muted-foreground); text-align:center; padding:10px;">Carregando...</div>
+              </div>
+            </div>
 
-      <div class="card" id="cup-status-card">
-        <div class="sub-title">Finalização Oficial do Bolão UNK</div>
-        <div class="form-row" style="align-items: center; gap: 12px; flex-wrap: wrap;">
-          <span style="font-size: 0.85rem; color: var(--muted-foreground); flex: 1; min-width: 250px;">
-            Status atual: <strong id="admin-cup-status-label" style="color: var(--muted-foreground);">Copa em
-              andamento</strong>
-          </span>
-          <button class="btn-add" id="btn-toggle-cup" onclick="toggleCupFinished()"
-            style="background: #10b981; border-color: #34d399; color: #fff;">
-            <i data-lucide="check-circle"
-              style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i>
-            Finalizar Copa e Exibir Pódio
-          </button>
-        </div>
-        <div id="admin-cup-final-match-info"
-          style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 0.85rem; display: flex; flex-direction: column; gap: 8px;">
-          <!-- Carregado dinamicamente -->
-        </div>
-      </div>
+            <!-- VALOR DA COTA -->
+            <div class="card">
+              <div class="sub-title">Valor da Cota (R$)</div>
+              <div class="form-row">
+                <input class="inp" id="admin-arrecadado" placeholder="Ex: 25" style="width:180px" type="number" min="0">
+                <button class="btn-add" onclick="saveArrecadado()"><i data-lucide="save"
+                    style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i>Salvar Valor</button>
+              </div>
+            </div>
 
-      <div class="card" style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.02);">
-        <div class="sub-title" style="color: #f59e0b">Ambiente de Testes</div>
-        <div class="form-row" style="align-items: center; gap: 12px; flex-wrap: wrap;">
-          <span style="font-size: 0.85rem; color: var(--muted-foreground); flex: 1; min-width: 250px;">Simule a
-            finalização da Copa com o pódio especial, confetes animados e pódio dos 3 primeiros colocados atuais. Ou
-            simule os placares das partidas para testar o ranking.</span>
-          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button class="btn-add" style="background: #f59e0b; border-color: #fbbf24; color: #1e1b4b;"
-              onclick="testPodium()"><i data-lucide="sparkles"
-                style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i>Ver
-              Animação do Pódio</button>
-            <button class="btn-add" style="background: #3b82f6; border-color: #60a5fa; color: #fff;"
-              onclick="openSimulator()"><i data-lucide="calculator"
-                style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i>Simulador
-              de Classificação</button>
+            <!-- ALTERAR PIN DE ADMIN -->
+            <div class="card">
+              <div class="sub-title">Alterar PIN de Admin</div>
+              <div class="form-row">
+                <input class="inp" id="admin-new-pin" placeholder="Novo PIN" style="width:180px" maxlength="8"
+                  inputmode="numeric">
+                <button class="btn-add" onclick="changeAdminPin()"><i data-lucide="key"
+                    style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i>Alterar</button>
+              </div>
+            </div>
+
+            <!-- FINALIZAÇÃO DA COPA -->
+            <div class="card" id="cup-status-card">
+              <div class="sub-title">Finalização Oficial do Bolão UNK</div>
+              <div class="form-row" style="align-items: center; gap: 12px; flex-wrap: wrap;">
+                <span style="font-size: 0.85rem; color: var(--muted-foreground); flex: 1; min-width: 250px;">
+                  Status atual: <strong id="admin-cup-status-label" style="color: var(--muted-foreground);">Copa em andamento</strong>
+                </span>
+                <button class="btn-add" id="btn-toggle-cup" onclick="toggleCupFinished()"
+                  style="background: #10b981; border-color: #34d399; color: #fff;">
+                  <i data-lucide="check-circle"
+                    style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i> Finalizar Copa e Exibir Pódio
+                </button>
+              </div>
+              <div id="admin-cup-final-match-info"
+                style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 0.85rem; display: flex; flex-direction: column; gap: 8px;">
+                <!-- Carregado dinamicamente -->
+              </div>
+            </div>
+
+            <!-- AMBIENTE DE TESTES -->
+            <div class="card" style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.02);">
+              <div class="sub-title" style="color: #f59e0b">Ambiente de Testes</div>
+              <div class="form-row" style="align-items: center; gap: 12px; flex-wrap: wrap;">
+                <span style="font-size: 0.85rem; color: var(--muted-foreground); flex: 1; min-width: 250px;">Simule a finalização da Copa com o pódio especial, confetes animados e pódio dos 3 primeiros colocados atuais. Ou simule os placares das partidas para testar o ranking.</span>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                  <button class="btn-add" style="background: #f59e0b; border-color: #fbbf24; color: #1e1b4b;"
+                    onclick="testPodium()"><i data-lucide="sparkles"
+                      style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i>Ver Animação do Pódio</button>
+                  <button class="btn-add" style="background: #3b82f6; border-color: #60a5fa; color: #fff;"
+                    onclick="openSimulator()"><i data-lucide="calculator"
+                      style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i>Simulador de Classificação</button>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+
+        </main>
       </div>
     </div>
 
@@ -6239,8 +6809,33 @@
     }
 
     // ─── Admin ────────────────────────────────────────────────────────────────────
+    function switchAdminTab(tabName) {
+      var items = document.querySelectorAll('.admin-sidebar-item');
+      items.forEach(function (item) {
+        if (item.getAttribute('data-admin-tab') === tabName) {
+          item.classList.add('active');
+        } else {
+          item.classList.remove('active');
+        }
+      });
+
+      var sections = document.querySelectorAll('.admin-section');
+      sections.forEach(function (sec) {
+        if (sec.id === 'admin-sec-' + tabName) {
+          sec.classList.add('active');
+        } else {
+          sec.classList.remove('active');
+        }
+      });
+
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    }
+
     function loadAdmin() {
       if (!session || session.type !== 'admin') return;
+      switchAdminTab('dashboard');
 
       // 1. Load approved participants and pending referrals list
       Promise.all([
@@ -6473,6 +7068,139 @@
       loadApiSyncStatus();
     }
 
+    function toggleSyncLog(elementId) {
+      var el = document.getElementById(elementId);
+      if (el) {
+        el.classList.toggle('expanded');
+        var iconEl = el.querySelector('.sync-log-toggle-icon i');
+        if (iconEl && typeof lucide !== 'undefined') {
+          if (el.classList.contains('expanded')) {
+            iconEl.setAttribute('data-lucide', 'chevron-down');
+          } else {
+            iconEl.setAttribute('data-lucide', 'chevron-right');
+          }
+          lucide.createIcons();
+        }
+      }
+    }
+
+    function switchSyncLogTab(event, logId, tabName) {
+      if (event) event.stopPropagation();
+      var container = document.getElementById('log-item-' + logId);
+      if (!container) return;
+
+      var tabButtons = container.querySelectorAll('.sync-tab-btn');
+      tabButtons.forEach(function (btn) {
+        if (btn.getAttribute('data-tab') === tabName) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
+      var tabContents = container.querySelectorAll('.sync-tab-content');
+      tabContents.forEach(function (content) {
+        if (content.getAttribute('data-tab-content') === tabName) {
+          content.classList.add('active');
+        } else {
+          content.classList.remove('active');
+        }
+      });
+    }
+
+    function copySyncId(event, syncId) {
+      if (event) event.stopPropagation();
+      navigator.clipboard.writeText(syncId).then(function () {
+        toast('ID de sincronização copiado!');
+      }).catch(function () {
+        toast('Erro ao copiar ID', 'err');
+      });
+    }
+
+    function formatLogDateTime(isoStr) {
+      if (!isoStr) return { date: '–', time: '–' };
+      var d = new Date(isoStr);
+      if (isNaN(d.getTime())) return { date: '–', time: '–' };
+      var dateStr = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      var timeStr = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      return { date: dateStr, time: timeStr };
+    }
+
+    function parseSyncLine(line) {
+      var type = 'info';
+      var title = 'Informação';
+      var desc = line;
+
+      if (line.indexOf('Erro') !== -1 || line.indexOf('Falha') !== -1 || line.indexOf('error') !== -1) {
+        type = 'error';
+        title = 'Erro no Processamento';
+        desc = line;
+      } else if (line.indexOf('ignorado') !== -1 || line.indexOf('ajuste manual') !== -1) {
+        type = 'warning';
+        title = 'Jogo Ignorado';
+        desc = line;
+      } else if (line.indexOf('cooldown') !== -1 || line.indexOf('Cooldown') !== -1 || line.indexOf('Limite') !== -1) {
+        type = 'warning';
+        title = 'Limite / Cooldown';
+        desc = line;
+      } else if (line.indexOf('Jogo #') !== -1) {
+        if (line.indexOf('Inicializado') !== -1) {
+          type = 'info';
+          title = 'Inicialização Local';
+          desc = line;
+        } else {
+          type = 'success';
+          title = 'Jogo Atualizado';
+          desc = line;
+        }
+      } else if (line.indexOf('Desafio') !== -1) {
+        type = 'success';
+        title = 'Desafio Processado';
+        desc = line;
+      } else if (line.indexOf('Iniciando') !== -1) {
+        type = 'info';
+        title = 'Iniciando Sincronização';
+        desc = line;
+      } else if (line.indexOf('concluída') !== -1 || line.indexOf('finalizado') !== -1) {
+        type = 'success';
+        title = 'Sincronização Concluída';
+        desc = line;
+      }
+
+      return { type: type, title: title, desc: desc };
+    }
+
+    function parseDetailsStats(detailsText) {
+      var lines = detailsText ? detailsText.split('\n') : [];
+      var updated = 0;
+      var ignored = 0;
+      var errors = 0;
+      var items = [];
+
+      lines.forEach(function (line) {
+        line = line.trim();
+        if (!line) return;
+        
+        var parsed = parseSyncLine(line);
+        if (parsed.type === 'success') {
+          if (parsed.title === 'Jogo Atualizado') updated++;
+        } else if (parsed.type === 'warning') {
+          ignored++;
+        } else if (parsed.type === 'error') {
+          errors++;
+        }
+        
+        items.push(parsed);
+      });
+
+      return {
+        updated: updated,
+        ignored: ignored,
+        errors: errors,
+        items: items
+      };
+    }
+
     function loadApiSyncStatus() {
       if (!session || session.type !== 'admin') return;
 
@@ -6482,7 +7210,7 @@
             var configStatus = document.getElementById('api-config-status');
             var lastSync = document.getElementById('api-last-sync');
             var lastSuccess = document.getElementById('api-last-success');
-            var logsBody = document.getElementById('api-sync-logs-body');
+            var logsList = document.getElementById('api-sync-logs-list');
 
             if (configStatus) {
               if (r.apiConfigured) {
@@ -6499,21 +7227,173 @@
               lastSuccess.textContent = r.lastSuccess ? fmtDateTimeLocal(r.lastSuccess) : 'Nunca';
             }
 
-            if (logsBody) {
+            // Calculate Sincronização KPI statistics from recent logs
+            if (r.recentLogs && r.recentLogs.length > 0) {
+              var last24hCount = 0;
+              var last24hSuccess = 0;
+              var totalUpdated = 0;
+              var totalIgnored = 0;
+              var totalErrors = 0;
+              var now = new Date();
+
+              r.recentLogs.forEach(function (log) {
+                var stats = parseDetailsStats(log.details);
+                totalUpdated += stats.updated;
+                totalIgnored += stats.ignored;
+                totalErrors += stats.errors;
+
+                var logDate = new Date(log.timestamp);
+                var diffHours = (now - logDate) / (1000 * 60 * 60);
+                if (diffHours <= 24) {
+                  last24hCount++;
+                  if (log.status === 'success') {
+                    last24hSuccess++;
+                  }
+                }
+              });
+
+              var successRate = last24hCount > 0 ? Math.round((last24hSuccess / last24hCount) * 100) : 100;
+
+              var kpiSyncCount = document.getElementById('kpi-sync-count');
+              var kpiSyncSuccessRate = document.getElementById('kpi-sync-success-rate');
+              var kpiSyncUpdated = document.getElementById('kpi-sync-updated');
+              var kpiSyncIgnored = document.getElementById('kpi-sync-ignored');
+              var kpiSyncErrors = document.getElementById('kpi-sync-errors');
+
+              if (kpiSyncCount) kpiSyncCount.textContent = last24hCount;
+              if (kpiSyncSuccessRate) kpiSyncSuccessRate.textContent = successRate + '% sucesso';
+              if (kpiSyncUpdated) kpiSyncUpdated.textContent = totalUpdated;
+              if (kpiSyncIgnored) kpiSyncIgnored.textContent = totalIgnored;
+              if (kpiSyncErrors) kpiSyncErrors.textContent = totalErrors;
+            }
+
+            if (logsList) {
               if (!r.recentLogs || r.recentLogs.length === 0) {
-                logsBody.innerHTML = '<tr><td colspan="4" class="empty" style="text-align: center;">Nenhuma sincronização registrada.</td></tr>';
+                logsList.innerHTML = '<div class="empty" style="text-align: center; font-size: 0.8rem; color: var(--muted-foreground); padding: 20px;">Nenhuma sincronização registrada.</div>';
               } else {
-                logsBody.innerHTML = r.recentLogs.map(function (log) {
-                  var badgeClass = log.status === 'success' ? 'green' : 'danger';
-                  var badgeText = log.status === 'success' ? 'Sucesso' : 'Falha';
+                logsList.innerHTML = r.recentLogs.map(function (log) {
+                  var stats = parseDetailsStats(log.details);
+                  var isSuccess = log.status === 'success';
+                  var itemClass = 'sync-log-item ' + (isSuccess ? 'success' : 'failure');
+                  var badgeClass = isSuccess ? 'success' : 'failure';
+                  var badgeText = isSuccess ? 'Sucesso' : 'Falha';
+                  var dt = formatLogDateTime(log.timestamp);
+                  var elementId = 'log-item-' + log.id;
                   
-                  return '<tr>'
-                    + '<td>' + fmtDateTimeLocal(log.timestamp) + '</td>'
-                    + '<td style="text-align:center;"><span class="tag ' + badgeClass + '" style="padding:1px 5px; font-size:0.7rem;">' + badgeText + '</span></td>'
-                    + '<td style="text-align:center; font-weight:600;">' + log.matches_synced + '</td>'
-                    + '<td style="font-size:0.72rem; max-width: 300px; color:var(--muted-foreground); white-space: pre-line;">' + (log.details || '–') + '</td>'
-                    + '</tr>';
+                  var pillUpdated = '<span class="sync-log-pill-summary"><span class="dot green"></span>' + stats.updated + ' atualizados</span>';
+                  var pillIgnored = stats.ignored > 0 ? '<span class="sync-log-pill-summary"><span class="dot yellow"></span>' + stats.ignored + ' ignorados</span>' : '';
+                  var pillErrors = stats.errors > 0 ? '<span class="sync-log-pill-summary"><span class="dot red"></span>' + stats.errors + ' erros</span>' : '';
+                  
+                  var detailsHtml = '<div class="sync-log-details">'
+                    + '  <div class="sync-tabs-header">'
+                    + '    <div class="sync-tabs-list">'
+                    + '      <button class="sync-tab-btn active" data-tab="summary" onclick="switchSyncLogTab(event, \'' + log.id + '\', \'summary\')">Resumo</button>'
+                    + '      <button class="sync-tab-btn" data-tab="timeline" onclick="switchSyncLogTab(event, \'' + log.id + '\', \'timeline\')">Logs detalhados</button>'
+                    + '    </div>'
+                    + '  </div>'
+                    
+                    + '  <div class="sync-tab-content active" data-tab-content="summary">'
+                    + '    <div class="sync-grid-container">'
+                    + '      <div class="sync-grid-card">'
+                    + '        <h4>Resumo da Execução</h4>'
+                    + '        <div class="sync-grid-row">'
+                    + '          <span class="label">ID da sincronização</span>'
+                    + '          <span class="val" style="display:flex;align-items:center;">' + log.id.substring(0, 13) + '... <button class="copy-id-btn" title="Copiar ID" onclick="copySyncId(event, \'' + log.id + '\')"><i data-lucide="copy" style="width:12px;height:12px;"></i></button></span>'
+                    + '        </div>'
+                    + '        <div class="sync-grid-row">'
+                    + '          <span class="label">Data/Hora</span>'
+                    + '          <span class="val">' + dt.date + ' ' + dt.time + '</span>'
+                    + '        </div>'
+                    + '        <div class="sync-grid-row">'
+                    + '          <span class="label">Status</span>'
+                    + '          <span class="val"><span class="sync-log-status-badge ' + badgeClass + '" style="font-size:0.65rem; padding:2px 6px;">' + badgeText + '</span></span>'
+                    + '        </div>'
+                    + '        <div class="sync-grid-row">'
+                    + '          <span class="label">API utilizada</span>'
+                    + '          <span class="val">Football Data</span>'
+                    + '        </div>'
+                    + '      </div>'
+                    + '      <div class="sync-grid-card">'
+                    + '        <h4>Estatísticas</h4>'
+                    + '        <div class="sync-grid-row">'
+                    + '          <span class="label">Jogos encontrados</span>'
+                    + '          <span class="val">' + (stats.updated + stats.ignored) + '</span>'
+                    + '        </div>'
+                    + '        <div class="sync-grid-row">'
+                    + '          <span class="label" style="color:#34d399">Jogos atualizados</span>'
+                    + '          <span class="val" style="color:#34d399">' + stats.updated + '</span>'
+                    + '        </div>'
+                    + '        <div class="sync-grid-row">'
+                    + '          <span class="label" style="color:#fbbf24">Jogos ignorados</span>'
+                    + '          <span class="val" style="color:#fbbf24">' + stats.ignored + '</span>'
+                    + '        </div>'
+                    + '        <div class="sync-grid-row">'
+                    + '          <span class="label" style="color:#f87171">Erros</span>'
+                    + '          <span class="val" style="color:#f87171">' + stats.errors + '</span>'
+                    + '        </div>'
+                    + '      </div>'
+                    + '    </div>'
+                    + '  </div>'
+                    
+                    + '  <div class="sync-tab-content" data-tab-content="timeline">'
+                    + '    <div class="sync-timeline">';
+                  
+                  if (stats.items.length === 0) {
+                    detailsHtml += '      <div style="font-size:0.75rem; color:var(--muted-foreground); text-align:center; padding:10px;">Sem eventos registrados.</div>';
+                  } else {
+                    stats.items.forEach(function (item) {
+                      var dotClass = item.type;
+                      var lucideIcon = 'info';
+                      if (item.type === 'success') lucideIcon = 'check-circle';
+                      else if (item.type === 'warning') lucideIcon = 'alert-triangle';
+                      else if (item.type === 'error') lucideIcon = 'x-circle';
+                      
+                      detailsHtml += '      <div class="sync-timeline-item">'
+                        + '        <div class="sync-timeline-dot ' + dotClass + '">'
+                        + '          <i data-lucide="' + lucideIcon + '" style="width:10px;height:10px;"></i>'
+                        + '        </div>'
+                        + '        <div class="sync-timeline-content">'
+                        + '          <div class="sync-timeline-title">' + item.title + '</div>'
+                        + '          <div class="sync-timeline-desc">' + item.desc + '</div>'
+                        + '        </div>'
+                        + '      </div>';
+                    });
+                  }
+                  
+                  detailsHtml += '    </div>'
+                    + '  </div>'
+                    + '</div>';
+                  
+                  return '<div class="' + itemClass + '" id="' + elementId + '">'
+                    + '  <div class="sync-log-header" onclick="toggleSyncLog(\'' + elementId + '\')">'
+                    + '    <div class="sync-log-header-left">'
+                    + '      <div class="sync-log-date-container">'
+                    + '        <div class="sync-log-date-icon"><i data-lucide="calendar" style="width:16px;height:16px;"></i></div>'
+                    + '        <div class="sync-log-date">'
+                    + '          <span class="date-part">' + dt.date + '</span>'
+                    + '          <span class="time-part">' + dt.time + '</span>'
+                    + '        </div>'
+                    + '      </div>'
+                    + '      <span class="sync-log-status-badge ' + badgeClass + '">' + badgeText + '</span>'
+                    + '    </div>'
+                    + '    <div class="sync-log-header-center">'
+                    + '      <span class="count-main">' + log.matches_synced + '</span>'
+                    + '      <span class="count-sub">' + (log.matches_synced === 1 ? 'partida sync' : 'partidas sync') + '</span>'
+                    + '    </div>'
+                    + '    <div class="sync-log-header-right">'
+                    + '      ' + pillUpdated
+                    + '      ' + pillIgnored
+                    + '      ' + pillErrors
+                    + '      <div class="sync-log-toggle-icon"><i data-lucide="chevron-right" style="width:16px;height:16px;"></i></div>'
+                    + '    </div>'
+                    + '  </div>'
+                    + '  ' + detailsHtml
+                    + '</div>';
                 }).join('');
+
+                if (typeof lucide !== 'undefined') {
+                  lucide.createIcons();
+                }
               }
             }
           }
@@ -9390,10 +10270,16 @@
           var sumBalEl = document.getElementById('admin-wallets-sum-balance');
           var sumDepEl = document.getElementById('admin-wallets-sum-deposited');
           var sumWonEl = document.getElementById('admin-wallets-sum-won');
+          var sumBalDash = document.getElementById('admin-dash-sum-balance');
+          var sumDepDash = document.getElementById('admin-dash-sum-deposited');
+          var sumWonDash = document.getElementById('admin-dash-sum-won');
 
           if (sumBalEl) sumBalEl.textContent = formatBRL(sumBalance);
           if (sumDepEl) sumDepEl.textContent = formatBRL(sumDeposited);
           if (sumWonEl) sumWonEl.textContent = formatBRL(sumWon);
+          if (sumBalDash) sumBalDash.textContent = formatBRL(sumBalance);
+          if (sumDepDash) sumDepDash.textContent = formatBRL(sumDeposited);
+          if (sumWonDash) sumWonDash.textContent = formatBRL(sumWon);
         });
     }
 
