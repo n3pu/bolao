@@ -2920,6 +2920,458 @@
     input:checked + .slider:before {
       transform: translateX(22px);
     }
+
+    /* Sub-tabs para Classificação & Eliminatórias */
+    .sub-tabs-wrapper {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sub-tabs-list {
+      display: flex;
+      gap: 24px;
+    }
+    .sub-tab-btn {
+      background: none;
+      border: none;
+      color: var(--muted-foreground);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 10px 4px 12px;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sub-tab-btn:hover {
+      color: var(--foreground);
+    }
+    .sub-tab-btn.active {
+      color: var(--primary);
+    }
+    .sub-tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--primary);
+      border-radius: 2px 2px 0 0;
+      box-shadow: 0 -2px 8px var(--primary);
+    }
+
+    /* Bracket Navigation Step Bar */
+    .bracket-nav {
+      display: flex;
+      background: #18181b;
+      padding: 4px;
+      border-radius: 8px;
+      margin-bottom: 0;
+      gap: 4px;
+      border: none;
+      flex: 1;
+    }
+    .bracket-nav-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--muted-foreground);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 8px 6px;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+    .bracket-nav-btn.active {
+      background: var(--border);
+      color: var(--foreground);
+    }
+    @media (max-width: 600px) {
+      .bracket-nav-btn:not(.active) {
+        display: none !important;
+      }
+      .bracket-nav-btn.active {
+        font-size: 0.9rem;
+        padding: 8px 16px;
+        width: 100%;
+      }
+      .bracket-match-header {
+        padding: 4px 8px;
+        font-size: 0.64rem;
+      }
+      .bracket-match-body {
+        padding: 8px 10px;
+        gap: 4px;
+      }
+      .bracket-team-row {
+        font-size: 0.76rem;
+        gap: 6px;
+        padding: 2px 0;
+      }
+      .bracket-score {
+        font-size: 0.85rem;
+        width: 20px;
+      }
+      .bracket-badge-wrap span, .bracket-badge-wrap img {
+        width: 24px !important;
+        height: 18px !important;
+      }
+    }
+    .bracket-arrow-btn:disabled {
+      opacity: 0.25;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* ── Bracket layout (mobile-first) ───────────────────── */
+    .bracket-viewport {
+      width: 100%;
+      overflow-x: auto;
+      overflow-y: visible;
+      position: relative;
+      min-height: 300px;
+    }
+    .bracket-scroll-container {
+      display: flex;
+      gap: 0;
+      overflow: visible;
+      position: relative;
+      align-items: stretch;
+    }
+
+    /* Each column transitions its width */
+    .bracket-column {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: visible;
+      transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.4s ease;
+    }
+    /* Active column takes all available width */
+    .bracket-column.bc-active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    /* Collapsed columns (only those strictly before active) */
+    .bracket-column.bc-before {
+      width: 0 !important;
+      opacity: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    /* Peek-1: immediate next column after active */
+    .bracket-column.bc-peek1 {
+      opacity: 0.55;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    /* Peek-2: two ahead */
+    .bracket-column.bc-peek2 {
+      opacity: 0.3;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    /* Farther ahead: fully hidden */
+    .bracket-column.bc-after {
+      width: 0 !important;
+      opacity: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .bracket-column-title {
+      font-family: 'Oswald', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--muted-foreground);
+      letter-spacing: 1px;
+      text-align: center;
+      padding: 12px 8px 16px;
+      flex-shrink: 0;
+    }
+    .bracket-column.bc-active .bracket-column-title {
+      color: var(--foreground);
+    }
+
+    /* ── Bracket layout: active column = natural flex, peek columns = JS-positioned ── */
+    .bracket-matches-list {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      position: relative;
+      padding: 0 12px;
+    }
+    /* Active column: comfortable natural spacing — minimum 8px between every card */
+    .bracket-column.bc-active .bracket-matches-list {
+      gap: 16px;          /* gap between pairs */
+      padding-bottom: 16px;
+    }
+    .bracket-column.bc-active .bracket-pair {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;           /* minimum 8px between the 2 cards inside a pair */
+    }
+    /* Final column active: stack cards horizontally centered at top */
+    .bracket-col-final.bc-active {
+      width: 100% !important;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    .bracket-col-final.bc-active .bracket-matches-list {
+      justify-content: flex-start;
+      align-items: center;
+      gap: 0;
+      width: 100%;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    /* Peek columns: matches-list acts as absolute-position container (JS sets sizes) */
+    .bracket-column.bc-peek1 .bracket-matches-list,
+    .bracket-column.bc-peek2 .bracket-matches-list {
+      position: relative;
+    }
+    /* Base pair: plain flex column — active class overrides add gap */
+    .bracket-pair {
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Bracket Match Card — all cards same width regardless of column (column clips via overflow:hidden) */
+    .bracket-match-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+      position: relative;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      /* Width set uniformly via JS – column overflow:hidden clips the rest */
+      width: var(--bracket-card-w, 100%);
+      min-width: 0;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .bracket-match-card:hover {
+      border-color: rgba(255,255,255,0.15);
+    }
+    .bracket-match-header {
+      display: flex;
+      justify-content: space-between;
+      background: #18181b;
+      padding: 6px 12px;
+      font-size: 0.68rem;
+      color: var(--muted-foreground);
+    }
+    .bracket-match-num {
+      font-weight: 600;
+      color: var(--primary);
+    }
+    .bracket-match-date {
+      font-size: 0.65rem;
+    }
+    .bracket-match-body {
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .bracket-team-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      padding: 4px 0;
+      color: var(--muted-foreground);
+      position: relative;
+    }
+    .bracket-team-row.winner {
+      color: var(--foreground);
+      font-weight: 600;
+    }
+    .bracket-badge-wrap {
+      display: inline-flex;
+      flex-shrink: 0;
+    }
+    .bracket-team-name {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .bracket-score {
+      font-family: 'Oswald', sans-serif;
+      font-size: 0.95rem;
+      width: 24px;
+      text-align: center;
+      color: var(--muted-foreground);
+    }
+    .bracket-team-row.winner .bracket-score {
+      color: var(--gold);
+    }
+
+    /* Bracket User Bet Badge */
+    .bracket-user-bet {
+      font-size: 0.65rem;
+      background: rgba(201, 168, 76, 0.06);
+      border: 1px solid rgba(201, 168, 76, 0.15);
+      color: var(--gold);
+      border-radius: 4px;
+      padding: 2px 6px;
+      margin-top: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* 3rd Place wrapper */
+    .bracket-third-place-wrap {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px dashed rgba(255,255,255,0.08);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 480px;
+      align-self: center;
+    }
+    .bracket-third-place-label {
+      font-size: 0.6rem;
+      font-family: 'Oswald', sans-serif;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted-foreground);
+      margin-bottom: 8px;
+      text-align: center;
+      opacity: 0.7;
+    }
+
+    /* Connector SVG overlay */
+    #bracket-connectors-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    /* ── Final column layout ─────────────────────────────────── */
+    .bracket-col-final .bracket-matches-list {
+      justify-content: flex-start;
+      align-items: center;
+      gap: 0;
+    }
+    .bracket-final-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      width: 100%;
+      gap: 20px;
+    }
+    .bracket-col-final.bc-active .bracket-final-center {
+      position: static !important;
+      transform: none !important;
+      top: auto !important;
+      left: auto !important;
+      right: auto !important;
+    }
+
+    /* Emblematic Final card */
+    .bracket-match-card.card-final {
+      border: 2px solid rgba(201, 168, 76, 0.6) !important;
+      background: linear-gradient(135deg, #0f0f10 0%, #1a1608 100%) !important;
+      box-shadow: 0 0 30px rgba(201, 168, 76, 0.2), 0 8px 32px rgba(0,0,0,0.6) !important;
+      width: var(--bracket-card-w, 100%) !important;
+    }
+    .bracket-match-card.card-final:hover {
+      border-color: rgba(201, 168, 76, 0.85) !important;
+      box-shadow: 0 0 40px rgba(201, 168, 76, 0.3), 0 8px 32px rgba(0,0,0,0.7) !important;
+    }
+    .bracket-match-card.card-final .bracket-match-header {
+      background: rgba(201, 168, 76, 0.12);
+      border-bottom: 1px solid rgba(201, 168, 76, 0.2);
+    }
+    .bracket-match-card.card-final .bracket-match-num {
+      font-size: 0.85rem;
+      font-family: 'Oswald', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--gold);
+    }
+    .bracket-match-card.card-final .bracket-match-body {
+      padding: 16px 20px;
+      gap: 10px;
+    }
+    .bracket-match-card.card-final .bracket-team-row {
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 6px 0;
+    }
+    .bracket-match-card.card-final .bracket-team-row.winner {
+      color: var(--gold);
+    }
+    .bracket-match-card.card-final .bracket-score {
+      font-size: 1.3rem;
+      width: 32px;
+      color: rgba(255,255,255,0.4);
+    }
+    .bracket-match-card.card-final .bracket-team-row.winner .bracket-score {
+      color: var(--gold);
+    }
+
+    /* 3rd Place wrapper — right below the Final card */
+    .bracket-third-place-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 12px;
+      border-top: 1px dashed rgba(255,255,255,0.07);
+      width: 100%;
+    }
+    .bracket-third-place-label {
+      font-size: 0.58rem;
+      font-family: 'Oswald', sans-serif;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted-foreground);
+      margin-bottom: 8px;
+      text-align: center;
+      opacity: 0.6;
+    }
+
+    /* Subdued 3rd-place card */
+    .bracket-match-card.card-third {
+      opacity: 0.85;
+      width: var(--bracket-card-w, 100%) !important;
+      border-color: rgba(255,255,255,0.08) !important;
+    }
+    .bracket-match-card.card-third:hover {
+      opacity: 1;
+      border-color: rgba(255,255,255,0.2) !important;
+    }
+    .bracket-match-card.card-third .bracket-match-num {
+      color: var(--muted-foreground);
+      font-size: 0.63rem;
+    }
   </style>
 </head>
 
@@ -3334,47 +3786,91 @@
       <div class="ptitle">
         <div style="display: flex; align-items: center;">
           <i data-lucide="layout-grid" style="width: 20px; height: 20px; margin-right: 10px; color: var(--primary)"></i>
-          Classificação dos Grupos
+          Classificação & Eliminatórias
         </div>
       </div>
 
-      <!-- Grid de grupos preenchido via JS -->
-      <div id="grupos-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 30px;">
-        <!-- Preenchido via JS -->
+      <!-- Switcher de Sub-abas -->
+      <div class="sub-tabs-wrapper">
+        <div class="sub-tabs-list">
+          <button id="sub-tab-grupos" class="sub-tab-btn active" onclick="switchGruposTab('grupos')">
+            <i data-lucide="layout-grid" style="width: 16px; height: 16px;"></i>Grupos
+          </button>
+          <button id="sub-tab-eliminatorias" class="sub-tab-btn" onclick="switchGruposTab('eliminatorias')">
+            <i data-lucide="git-branch" style="width: 16px; height: 16px;"></i>Eliminatórias
+          </button>
+        </div>
       </div>
 
-      <!-- Tabela dos melhores terceiros colocados -->
-      <div class="card" style="margin-bottom: 30px; border-color: rgba(201, 168, 76, 0.25); background: rgba(201, 168, 76, 0.01);">
-        <div class="sub-title" style="display:flex; align-items:center; gap:6px; color: var(--gold);">
-          <i data-lucide="medal" style="width:16px; height:16px;"></i>
-          Melhores 3º Colocados
+      <!-- Conteúdo: Classificação dos Grupos -->
+      <div id="tab-content-grupos">
+        <!-- Grid de grupos preenchido via JS -->
+        <div id="grupos-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 30px;">
+          <!-- Preenchido via JS -->
         </div>
-        <div style="font-size: 0.8rem; color: var(--muted-foreground); margin-bottom: 12px; line-height: 1.4;">
-          De acordo com o regulamento oficial da FIFA, os **8 melhores terceiros colocados** dos 12 grupos se classificam para a fase de mata-mata (Round of 32).
+
+        <!-- Tabela dos melhores terceiros colocados -->
+        <div class="card" style="margin-bottom: 30px; border-color: rgba(201, 168, 76, 0.25); background: rgba(201, 168, 76, 0.01);">
+          <div class="sub-title" style="display:flex; align-items:center; gap:6px; color: var(--gold);">
+            <i data-lucide="medal" style="width:16px; height:16px;"></i>
+            Melhores 3º Colocados
+          </div>
+          <div style="font-size: 0.8rem; color: var(--muted-foreground); margin-bottom: 12px; line-height: 1.4;">
+            De acordo com o regulamento oficial da FIFA, os **8 melhores terceiros colocados** dos 12 grupos se classificam para a fase de mata-mata (Round of 32).
+          </div>
+          <div class="table-container" style="overflow-x: auto;">
+            <table class="rtable" style="font-size:0.8rem; min-width: 500px;">
+              <thead>
+                <tr>
+                  <th style="width: 40px; text-align: center;">Pos</th>
+                  <th style="width: 60px; text-align: center;">Grupo</th>
+                  <th>Equipe</th>
+                  <th style="width: 45px; text-align: center;">PJ</th>
+                  <th style="width: 40px; text-align: center;">V</th>
+                  <th style="width: 40px; text-align: center;">E</th>
+                  <th style="width: 40px; text-align: center;">D</th>
+                  <th style="width: 45px; text-align: center;">GP</th>
+                  <th style="width: 45px; text-align: center;">GC</th>
+                  <th style="width: 45px; text-align: center;">SG</th>
+                  <th style="width: 50px; text-align: center; color: var(--primary); font-weight: 700;">Pts</th>
+                </tr>
+              </thead>
+              <tbody id="best-thirds-body">
+                <tr>
+                  <td colspan="11" class="empty" style="text-align: center; padding: 20px;">Carregando classificação de terceiros...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div class="table-container" style="overflow-x: auto;">
-          <table class="rtable" style="font-size:0.8rem; min-width: 500px;">
-            <thead>
-              <tr>
-                <th style="width: 40px; text-align: center;">Pos</th>
-                <th style="width: 60px; text-align: center;">Grupo</th>
-                <th>Equipe</th>
-                <th style="width: 45px; text-align: center;">PJ</th>
-                <th style="width: 40px; text-align: center;">V</th>
-                <th style="width: 40px; text-align: center;">E</th>
-                <th style="width: 40px; text-align: center;">D</th>
-                <th style="width: 45px; text-align: center;">GP</th>
-                <th style="width: 45px; text-align: center;">GC</th>
-                <th style="width: 45px; text-align: center;">SG</th>
-                <th style="width: 50px; text-align: center; color: var(--primary); font-weight: 700;">Pts</th>
-              </tr>
-            </thead>
-            <tbody id="best-thirds-body">
-              <tr>
-                <td colspan="11" class="empty" style="text-align: center; padding: 20px;">Carregando classificação de terceiros...</td>
-              </tr>
-            </tbody>
-          </table>
+      </div>
+
+      <!-- Conteúdo: Chaveamento Eliminatório -->
+      <div id="tab-content-eliminatorias" style="display: none; max-width: 100%; overflow: hidden;">
+        <!-- Navegador de rodadas -->
+        <div class="bracket-nav-container" style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 20px; width: 100%; padding: 0 10px;">
+          <button type="button" id="bracket-prev-btn" class="bracket-arrow-btn" onclick="bracketNavigate('prev')" title="Rodada Anterior" style="background: #18181b; border: 1px solid var(--border); color: var(--muted-foreground); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; flex-shrink: 0;" onmouseover="if(!this.disabled){this.style.borderColor='var(--primary)'; this.style.color='var(--foreground)'}" onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--muted-foreground)'">
+            <i data-lucide="chevron-left" style="width: 18px; height: 18px;"></i>
+          </button>
+          
+          <div class="bracket-nav" id="bracket-nav-bar">
+            <button id="bracket-nav-btn-0" class="bracket-nav-btn active" onclick="bracketNavigate(0)">2ª Rodada</button>
+            <button id="bracket-nav-btn-1" class="bracket-nav-btn" onclick="bracketNavigate(1)">Oitavas</button>
+            <button id="bracket-nav-btn-2" class="bracket-nav-btn" onclick="bracketNavigate(2)">Quartas</button>
+            <button id="bracket-nav-btn-3" class="bracket-nav-btn" onclick="bracketNavigate(3)">Semi</button>
+            <button id="bracket-nav-btn-4" class="bracket-nav-btn" onclick="bracketNavigate(4)">Final</button>
+          </div>
+          
+          <button type="button" id="bracket-next-btn" class="bracket-arrow-btn" onclick="bracketNavigate('next')" title="Próxima Rodada" style="background: #18181b; border: 1px solid var(--border); color: var(--muted-foreground); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; flex-shrink: 0;" onmouseover="if(!this.disabled){this.style.borderColor='var(--primary)'; this.style.color='var(--foreground)'}" onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--muted-foreground)'">
+            <i data-lucide="chevron-right" style="width: 18px; height: 18px;"></i>
+          </button>
+        </div>
+
+        <!-- Container do Bracket -->
+        <div class="bracket-viewport">
+          <div id="bracket-scroll-container" class="bracket-scroll-container">
+            <!-- Colunas injetadas via JS -->
+          </div>
         </div>
       </div>
     </div>
@@ -5456,15 +5952,22 @@
         }).join('');
       }
       
-      apiFetch('GET', '/api/matches')
-        .then(function (matches) {
-          allMatches = Array.isArray(matches) ? matches : [];
+      var calls = [
+        apiFetch('GET', '/api/matches'),
+        apiFetch('GET', '/api/bets')
+      ];
+
+      Promise.all(calls)
+        .then(function (results) {
+          allMatches = Array.isArray(results[0]) ? results[0] : [];
+          allBets = Array.isArray(results[1]) ? results[1] : [];
           renderGrupos();
+          renderEliminatorias();
         })
         .catch(function (err) {
-          console.error('Error loading matches for groups:', err);
+          console.error('Error loading matches/bets for groups:', err);
           if (grid) {
-            grid.innerHTML = '<div class="empty" style="grid-column: 1/-1; text-align:center; padding:40px;">Erro ao carregar classificação dos grupos.</div>';
+            grid.innerHTML = '<div class="empty" style="grid-column: 1/-1; text-align:center; padding:40px;">Erro ao carregar dados.</div>';
           }
         });
     }
@@ -5677,6 +6180,582 @@
       }
 
       lucide.createIcons();
+    }
+
+    // ─── Sub-Tabs and Bracket (Eliminatórias) ──────────────────────────────────────
+    var bracketActiveRound = 0; // 0-4
+    var BRACKET_TOTAL_ROUNDS = 5;
+
+    function switchGruposTab(tabName) {
+      var tabGrupos = document.getElementById('tab-content-grupos');
+      var tabEliminatorias = document.getElementById('tab-content-eliminatorias');
+      var btnGrupos = document.getElementById('sub-tab-grupos');
+      var btnEliminatorias = document.getElementById('sub-tab-eliminatorias');
+      
+      if (tabName === 'grupos') {
+        if (tabGrupos) tabGrupos.style.display = 'block';
+        if (tabEliminatorias) tabEliminatorias.style.display = 'none';
+        if (btnGrupos) btnGrupos.classList.add('active');
+        if (btnEliminatorias) btnEliminatorias.classList.remove('active');
+      } else {
+        if (tabGrupos) tabGrupos.style.display = 'none';
+        if (tabEliminatorias) tabEliminatorias.style.display = 'block';
+        if (btnGrupos) btnGrupos.classList.remove('active');
+        if (btnEliminatorias) btnEliminatorias.classList.add('active');
+        renderEliminatorias();
+        setTimeout(function() { applyBracketRound(bracketActiveRound, false); }, 50);
+      }
+    }
+
+    function findMatchByNum(num) {
+      return allMatches.find(function (m) {
+        return m.num === num || String(m.id) === String(num);
+      });
+    }
+
+    function getMatchWinner(m) {
+      if (!m || !m.result || m.result.score1 === null || m.result.score2 === null) return null;
+      var s1 = parseInt(m.result.score1);
+      var s2 = parseInt(m.result.score2);
+      if (s1 > s2) return m.team1;
+      if (s2 > s1) return m.team2;
+      return m.result.penalties_winner || null;
+    }
+
+    function getSourceWinnerPathClass(m) {
+      if (!m) return '';
+      var isT1 = m.team1 && m.team1 !== 'TBD' && !/^[1-3][A-L]/.test(m.team1) && m.team1 !== '3rd';
+      var isT2 = m.team2 && m.team2 !== 'TBD' && !/^[1-3][A-L]/.test(m.team2) && m.team2 !== '3rd';
+      return (isT1 || isT2) ? ' winner-path' : '';
+    }
+
+    function getTeamBadgeOrPlaceholder(team, badgeUrl) {
+      var isPlaceholder = !team || team === 'TBD' || /^[1-3][A-L]/.test(team) || team === '3rd' || team === '3º';
+      if (isPlaceholder) {
+        return '<span style="display:inline-flex; align-items:center; justify-content:center; width:32px; height:24px; border-radius:4px; background:rgba(255,255,255,0.05); border:1px dashed rgba(255,255,255,0.15); color:var(--muted-foreground);"><i data-lucide="shield" style="width:12px; height:12px;"></i></span>';
+      }
+      return tb(team, badgeUrl);
+    }
+
+    function renderBracketMatchCardHtml(m, extraClass, customLabel) {
+      if (!m) {
+        return '<div class="bracket-match-card" style="opacity: 0.3;"><div class="bracket-match-body">Partida não encontrada</div></div>';
+      }
+
+      var isFinished = m.result && m.result.score1 !== null && m.result.score2 !== null;
+      var s1 = isFinished ? m.result.score1 : '';
+      var s2 = isFinished ? m.result.score2 : '';
+      
+      var wClass1 = '', wClass2 = '';
+      if (isFinished) {
+        var winner = getMatchWinner(m);
+        if (winner === m.team1) wClass1 = ' winner';
+        if (winner === m.team2) wClass2 = ' winner';
+      }
+
+      var dateLabel = customLabel || ('Jogo ' + m.num);
+      var timeLabel = m.date ? (fmtDate(m.date) + ' - ' + fmtTime(m.datetime)) : 'A definir';
+
+      var userBetHtml = '';
+      if (session && session.type === 'participant') {
+        var myBet = allBets.find(function (b) { return String(b.matchId) === String(m.id); });
+        if (myBet && myBet.score1 !== null && myBet.score2 !== null) {
+          userBetHtml = '<div class="bracket-user-bet"><i data-lucide="ticket" style="width:10px;height:10px;color:var(--gold)"></i>Meu palpite: <strong>' + myBet.score1 + '–' + myBet.score2 + '</strong></div>';
+        }
+      }
+
+      var penaltyLabel = '';
+      if (isFinished && m.result.score1 === m.result.score2 && m.result.penalties_winner) {
+        penaltyLabel = '<div style="font-size:0.68rem; color:var(--gold); font-weight:600; text-align:center; padding-top:4px; border-top:1px solid rgba(255,255,255,0.03); display:flex; align-items:center; justify-content:center; gap:3px;"><i data-lucide="trophy" style="width:10px;height:10px;"></i>Pen: ' + tn(m.result.penalties_winner) + '</div>';
+      }
+
+      var badge1 = getTeamBadgeOrPlaceholder(m.team1, m.team1_badge);
+      var badge2 = getTeamBadgeOrPlaceholder(m.team2, m.team2_badge);
+
+      var extraClassStr = (extraClass || '');
+      var cardHtml = '<div class="bracket-match-card' + extraClassStr + '" onclick="focusMatchInJogos(\'' + m.id + '\')">';
+      cardHtml += '  <div class="bracket-match-header">';
+      cardHtml += '    <span class="bracket-match-num">' + dateLabel + '</span>';
+      cardHtml += '    <span class="bracket-match-date">' + timeLabel + '</span>';
+      cardHtml += '  </div>';
+      cardHtml += '  <div class="bracket-match-body">';
+      cardHtml += '    <div class="bracket-team-row' + wClass1 + '">';
+      cardHtml += '      <span class="bracket-badge-wrap">' + badge1 + '</span>';
+      cardHtml += '      <span class="bracket-team-name">' + tn(m.team1) + '</span>';
+      cardHtml += '      <span class="bracket-score">' + s1 + '</span>';
+      cardHtml += '    </div>';
+      cardHtml += '    <div class="bracket-team-row' + wClass2 + '">';
+      cardHtml += '      <span class="bracket-badge-wrap">' + badge2 + '</span>';
+      cardHtml += '      <span class="bracket-team-name">' + tn(m.team2) + '</span>';
+      cardHtml += '      <span class="bracket-score">' + s2 + '</span>';
+      cardHtml += '    </div>';
+      if (penaltyLabel) cardHtml += '    ' + penaltyLabel;
+      if (userBetHtml) cardHtml += '    ' + userBetHtml;
+      cardHtml += '  </div>';
+      cardHtml += '</div>';
+
+      return cardHtml;
+    }
+
+    // ── Round definitions (pairs: [topMatch, bottomMatch, nextMatch]) ────────
+    var bracketRoundDefs = [
+      { title: '2ª Rodada', pairs: [[74,77,90],[73,75,89],[83,84,94],[81,82,93],[76,78,91],[79,80,92],[86,88,96],[85,87,95]] },
+      { title: 'Oitavas',    pairs: [[90,89,97],[94,93,98],[91,92,99],[96,95,100]] },
+      { title: 'Quartas',    pairs: [[97,98,101],[99,100,102]] },
+      { title: 'Semifinais', pairs: [[101,102,104]] },
+      { title: 'Final' }
+    ];
+
+    function renderEliminatorias() {
+      var container = document.getElementById('bracket-scroll-container');
+      if (!container) return;
+
+      var html = '';
+
+      bracketRoundDefs.forEach(function(colInfo, colIdx) {
+        var isFinalCol = !colInfo.pairs;
+        var colClass = 'bracket-column' + (isFinalCol ? ' bracket-col-final' : '');
+        html += '<div class="' + colClass + '" data-col="' + colIdx + '">';
+        html += '  <div class="bracket-column-title">' + colInfo.title + '</div>';
+        html += '  <div class="bracket-matches-list">';
+
+        if (colInfo.pairs) {
+          colInfo.pairs.forEach(function(pair) {
+            var topMatch    = findMatchByNum(pair[0]);
+            var bottomMatch = findMatchByNum(pair[1]);
+            var targetMatch = pair[2] ? findMatchByNum(pair[2]) : null;
+
+            var pairWinnerClass = '';
+            if (targetMatch) {
+              var topWinner    = topMatch    ? getMatchWinner(topMatch)    : null;
+              var bottomWinner = bottomMatch ? getMatchWinner(bottomMatch) : null;
+              if (topWinner    && (targetMatch.team1 === topWinner    || targetMatch.team2 === topWinner))    pairWinnerClass = ' winner-top';
+              else if (bottomWinner && (targetMatch.team1 === bottomWinner || targetMatch.team2 === bottomWinner)) pairWinnerClass = ' winner-bottom';
+            }
+
+            html += '<div class="bracket-pair' + pairWinnerClass + '">';
+            html += renderBracketMatchCardHtml(topMatch,    topMatch    ? getSourceWinnerPathClass(topMatch)    : '');
+            html += renderBracketMatchCardHtml(bottomMatch, bottomMatch ? getSourceWinnerPathClass(bottomMatch) : '');
+            html += '</div>';
+          });
+        } else {
+          var finalMatch = findMatchByNum(104);
+          var thirdMatch = findMatchByNum(103);
+
+          html += '<div class="bracket-final-center">';
+          html +=   renderBracketMatchCardHtml(finalMatch, ' card-final', 'Final ★');
+          if (thirdMatch) {
+            html += '<div class="bracket-third-place-wrap">';
+            html += '  <div class="bracket-third-place-label">Disputa pelo 3º Lugar</div>';
+            html += renderBracketMatchCardHtml(thirdMatch, ' card-third', '3º Lugar');
+            html += '</div>';
+          }
+          html += '</div>'; // bracket-final-center
+        }
+
+        html += '  </div>'; // bracket-matches-list
+        html += '</div>';   // bracket-column
+      });
+
+      // SVG overlay for connectors
+      html += '<svg id="bracket-connectors-svg" aria-hidden="true"></svg>';
+
+      container.innerHTML = html;
+      lucide.createIcons();
+    }
+
+    // ── Helpers for peek column JS-based positioning ─────────────────────────────
+
+    // Return array of midpoint-Y for each pair in `col`, relative to container top.
+    // The midpoint = center between the pair's 2 cards = bracket "output" to next round.
+    function getBracketOutputYs(col, containerRect) {
+      var ys = [];
+      col.querySelectorAll('.bracket-pair').forEach(function(pair) {
+        var cards = pair.querySelectorAll('.bracket-match-card');
+        if (cards.length >= 2) {
+          var r1 = cards[0].getBoundingClientRect();
+          var r2 = cards[1].getBoundingClientRect();
+          var cy1 = r1.top - containerRect.top + r1.height / 2;
+          var cy2 = r2.top - containerRect.top + r2.height / 2;
+          ys.push((cy1 + cy2) / 2);
+        } else if (cards.length === 1) {
+          var r = cards[0].getBoundingClientRect();
+          ys.push(r.top - containerRect.top + r.height / 2);
+        }
+      });
+      return ys;
+    }
+
+    // Absolutely-position cards in `peekCol` at the Y centers given by `inputYs`.
+    // Each pair in the peek column consumes 2 consecutive inputYs (top card, bottom card).
+    // Returns the output Ys for this column (midpoints of each pair).
+    function positionPeekCol(peekCol, inputYs, containerH) {
+      var list = peekCol.querySelector('.bracket-matches-list');
+      if (list) {
+        list.style.position = 'relative';
+        list.style.height   = containerH + 'px';
+        list.style.padding  = '0 12px';
+      }
+
+      // Special case: Final column peek (has .bracket-final-center, no pairs)
+      var finalCenter = peekCol.querySelector('.bracket-final-center');
+      if (finalCenter) {
+        var fcy = inputYs.length
+          ? inputYs.reduce(function(s, y) { return s + y; }, 0) / inputYs.length
+          : containerH / 2;
+        var finalCard = finalCenter.querySelector('.card-final');
+        var fh = finalCard ? (finalCard.offsetHeight || 100) : 100;
+        finalCenter.style.position  = 'absolute';
+        finalCenter.style.top       = Math.round(fcy - fh / 2) + 'px';
+        finalCenter.style.left      = '12px';
+        finalCenter.style.right     = '12px';
+        finalCenter.style.transform = 'none';
+        
+        var thirdWrap = finalCenter.querySelector('.bracket-third-place-wrap');
+        if (thirdWrap) {
+          thirdWrap.style.marginTop = '16px';
+        }
+        return [fcy];
+      }
+
+      var outputYs = [];
+      peekCol.querySelectorAll('.bracket-pair').forEach(function(pair, pairIdx) {
+        var cards = pair.querySelectorAll('.bracket-match-card');
+        var topY  = inputYs[pairIdx * 2];
+        var botY  = inputYs[pairIdx * 2 + 1];
+
+        // Collapse the pair's own layout contribution
+        pair.style.flex      = 'none';
+        pair.style.height    = '0px';
+        pair.style.minHeight = '0';
+        pair.style.overflow  = 'visible';
+        pair.style.position  = 'static';
+
+        if (cards[0] && topY !== undefined) {
+          var h1 = cards[0].offsetHeight || 80;
+          cards[0].style.position = 'absolute';
+          cards[0].style.top      = Math.round(topY - h1 / 2) + 'px';
+          cards[0].style.left     = '12px';
+        }
+        if (cards[1] && botY !== undefined) {
+          var h2 = cards[1].offsetHeight || 80;
+          cards[1].style.position = 'absolute';
+          cards[1].style.top      = Math.round(botY - h2 / 2) + 'px';
+          cards[1].style.left     = '12px';
+        }
+
+        if (topY !== undefined && botY !== undefined) {
+          outputYs.push((topY + botY) / 2);
+        } else if (topY !== undefined) {
+          outputYs.push(topY);
+        }
+      });
+
+      return outputYs;
+    }
+
+    // Reset any JS-set positioning on all columns (called before each round change)
+    function resetPeekPositioning(cols) {
+      cols.forEach(function(col) {
+        var list = col.querySelector('.bracket-matches-list');
+        if (list) { list.style.cssText = ''; }
+        col.querySelectorAll('.bracket-pair').forEach(function(pair) {
+          pair.style.flex = pair.style.height = pair.style.minHeight =
+            pair.style.overflow = pair.style.position = '';
+        });
+        col.querySelectorAll('.bracket-match-card').forEach(function(card) {
+          card.style.position = card.style.top = card.style.left = '';
+        });
+        var fc = col.querySelector('.bracket-final-center');
+        if (fc) { fc.style.cssText = ''; }
+      });
+    }
+
+    var bracketAnimTimer = null;
+
+    function updateBracketLayout() {
+      if (bracketActiveRound === undefined) return;
+      var container = document.getElementById('bracket-scroll-container');
+      if (!container) return;
+      var cols = container.querySelectorAll('.bracket-column');
+      if (!cols || cols.length === 0) return;
+
+      positionPeekColumns(bracketActiveRound, cols, container);
+      drawBracketConnectors(bracketActiveRound);
+    }
+
+    // Orchestrate: measure active col, compute bracket midpoints, position peek cols
+    function positionPeekColumns(roundIdx, cols, container) {
+      var activeColEl = cols[roundIdx];
+      if (!activeColEl) return;
+
+      var containerRect = container.getBoundingClientRect();
+      var containerH    = container.clientHeight || container.offsetHeight || 600;
+
+      var currentYs = getBracketOutputYs(activeColEl, containerRect);
+
+      for (var c = roundIdx + 1; c < cols.length; c++) {
+        if (!currentYs || currentYs.length === 0) break;
+        currentYs = positionPeekCol(cols[c], currentYs, containerH);
+      }
+    }
+
+    // ── Apply round: set widths + trigger positioning after transition ───────────────
+    function applyBracketRound(roundIdx, animate) {
+      bracketActiveRound = roundIdx;
+      var container = document.getElementById('bracket-scroll-container');
+      if (!container) return;
+      var cols = container.querySelectorAll('.bracket-column');
+      var totalCols = cols.length;
+
+      var cw     = container.clientWidth || container.offsetWidth || window.innerWidth || 360;
+      var cardW  = (cw <= 480 ? Math.min(270, cw - 32) : Math.min(310, Math.max(260, cw - 40)));
+      var colW   = cardW + 24;
+      container.style.setProperty('--bracket-card-w', cardW + 'px');
+
+      if (bracketAnimTimer) {
+        clearInterval(bracketAnimTimer);
+        bracketAnimTimer = null;
+      }
+
+      resetPeekPositioning(cols);
+
+      // Measure natural height of active column to prevent cutting off bottom cards
+      var activeColEl = cols[roundIdx];
+      var naturalH = activeColEl ? activeColEl.scrollHeight : 1600;
+      var minPairH = (roundIdx === 4 ? 100 : 210);
+      var maxPairs = (roundIdx === 4 ? 2 : 8);
+      var containerH = Math.max(naturalH + 120, maxPairs * minPairH + 100, Math.round(window.innerHeight * 0.75));
+      container.style.height = containerH + 'px';
+
+      cols.forEach(function(col, idx) {
+        col.classList.remove('bc-active','bc-before','bc-after','bc-peek1','bc-peek2');
+
+        if (idx < roundIdx) {
+          col.classList.add('bc-before');
+          col.style.width = '0px';
+          col.style.opacity = '0';
+        } else if (idx === roundIdx) {
+          col.classList.add('bc-active');
+          col.style.width = (idx === 4 ? '100%' : colW + 'px');
+          col.style.opacity = '1';
+        } else if (idx === roundIdx + 1) {
+          col.classList.add('bc-peek1');
+          col.style.width = colW + 'px';
+          col.style.opacity = '0.85';
+        } else if (idx === roundIdx + 2) {
+          col.classList.add('bc-peek2');
+          col.style.width = colW + 'px';
+          col.style.opacity = '0.6';
+        } else {
+          col.classList.add('bc-after');
+          col.style.width = colW + 'px';
+          col.style.opacity = '0.35';
+        }
+
+        if (!animate) {
+          col.style.transition = 'none';
+          setTimeout(function() { col.style.transition = ''; }, 50);
+        }
+      });
+
+      // Nav buttons
+      for (var i = 0; i < BRACKET_TOTAL_ROUNDS; i++) {
+        var btn = document.getElementById('bracket-nav-btn-' + i);
+        if (btn) btn.classList.toggle('active', i === roundIdx);
+      }
+
+      // Arrows
+      var prevBtn = document.getElementById('bracket-prev-btn');
+      var nextBtn = document.getElementById('bracket-next-btn');
+      if (prevBtn) prevBtn.disabled = (roundIdx === 0);
+      if (nextBtn) nextBtn.disabled = (roundIdx === totalCols - 1);
+
+      // Force browser reflow
+      void container.offsetWidth;
+
+      // Immediate update
+      updateBracketLayout();
+
+      if (animate) {
+        var startTime = Date.now();
+        bracketAnimTimer = setInterval(function() {
+          updateBracketLayout();
+          if (Date.now() - startTime >= 550) {
+            clearInterval(bracketAnimTimer);
+            bracketAnimTimer = null;
+            updateBracketLayout();
+          }
+        }, 30);
+      } else {
+        setTimeout(updateBracketLayout, 60);
+      }
+    }
+
+    // ── Draw SVG connector lines between active and adjacent rounds ──────────
+    function drawBracketConnectors(roundIdx) {
+      var svg = document.getElementById('bracket-connectors-svg');
+      if (!svg) return;
+      svg.innerHTML = ''; // Clear existing
+
+      var container = document.getElementById('bracket-scroll-container');
+      if (!container) return;
+
+      var cols = container.querySelectorAll('.bracket-column');
+      var containerRect = container.getBoundingClientRect();
+
+      var stroke = '#3f3f46';
+      var strokeW = 2;
+      var R = 8;
+
+      for (var c = roundIdx; c < cols.length - 1; c++) {
+        var colEl = cols[c];
+        var nextColEl = cols[c + 1];
+        if (!colEl || !nextColEl) continue;
+
+        var colDef = bracketRoundDefs[c];
+        if (!colDef || !colDef.pairs) continue;
+
+        var pairEls = colEl.querySelectorAll('.bracket-pair');
+
+        colDef.pairs.forEach(function(pair, pairIdx) {
+          var pairEl = pairEls[pairIdx];
+          if (!pairEl) return;
+
+          var cards = pairEl.querySelectorAll('.bracket-match-card');
+          if (cards.length < 2) return;
+
+          var c1 = cards[0].getBoundingClientRect();
+          var c2 = cards[1].getBoundingClientRect();
+          var cr = containerRect;
+
+          var x1 = c1.right - cr.left;
+          var y1 = c1.top  - cr.top  + c1.height / 2;
+          var x2 = c2.right - cr.left;
+          var y2 = c2.top  - cr.top  + c2.height / 2;
+
+          var ym = (y1 + y2) / 2;
+
+          var targetCard = null;
+          if (nextColEl.classList.contains('bracket-col-final')) {
+            targetCard = nextColEl.querySelector('.card-final');
+          } else {
+            var targetPairIdx = Math.floor(pairIdx / 2);
+            var targetCardIdx = pairIdx % 2;
+            var nextPairs = nextColEl.querySelectorAll('.bracket-pair');
+            if (nextPairs[targetPairIdx]) {
+              var nextCards = nextPairs[targetPairIdx].querySelectorAll('.bracket-match-card');
+              targetCard = nextCards[targetCardIdx] || nextCards[0];
+            }
+          }
+
+          var xStemEnd = x1 + 40;
+          var yTarget = ym;
+          if (targetCard) {
+            var tr = targetCard.getBoundingClientRect();
+            xStemEnd = tr.left - cr.left;
+            yTarget  = tr.top - cr.top + tr.height / 2;
+          }
+
+          var xBend = Math.min(x1 + 20, xStemEnd - 10);
+          if (xBend <= x1) xBend = x1 + 10;
+
+          var d = '';
+          // Top arm
+          d += 'M ' + x1 + ' ' + y1;
+          if (Math.abs(y1 - yTarget) > R * 2) {
+            if (y1 < yTarget) {
+              d += ' L ' + (xBend - R) + ' ' + y1;
+              d += ' Q ' + xBend + ' ' + y1 + ' ' + xBend + ' ' + (y1 + R);
+              d += ' L ' + xBend + ' ' + (yTarget - R);
+              d += ' Q ' + xBend + ' ' + yTarget + ' ' + (xBend + R) + ' ' + yTarget;
+            } else {
+              d += ' L ' + (xBend - R) + ' ' + y1;
+              d += ' Q ' + xBend + ' ' + y1 + ' ' + xBend + ' ' + (y1 - R);
+              d += ' L ' + xBend + ' ' + (yTarget + R);
+              d += ' Q ' + xBend + ' ' + yTarget + ' ' + (xBend + R) + ' ' + yTarget;
+            }
+          } else {
+            d += ' L ' + xBend + ' ' + y1 + ' L ' + xBend + ' ' + yTarget;
+          }
+          d += ' L ' + xStemEnd + ' ' + yTarget;
+
+          // Bottom arm
+          d += ' M ' + x2 + ' ' + y2;
+          if (Math.abs(y2 - yTarget) > R * 2) {
+            if (y2 > yTarget) {
+              d += ' L ' + (xBend - R) + ' ' + y2;
+              d += ' Q ' + xBend + ' ' + y2 + ' ' + xBend + ' ' + (y2 - R);
+              d += ' L ' + xBend + ' ' + (yTarget + R);
+              d += ' Q ' + xBend + ' ' + yTarget + ' ' + (xBend + R) + ' ' + yTarget;
+            } else {
+              d += ' L ' + (xBend - R) + ' ' + y2;
+              d += ' Q ' + xBend + ' ' + y2 + ' ' + xBend + ' ' + (y2 + R);
+              d += ' L ' + xBend + ' ' + (yTarget - R);
+              d += ' Q ' + xBend + ' ' + yTarget + ' ' + (xBend + R) + ' ' + yTarget;
+            }
+          } else {
+            d += ' L ' + xBend + ' ' + y2 + ' L ' + xBend + ' ' + yTarget;
+          }
+          d += ' L ' + xStemEnd + ' ' + yTarget;
+
+          var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path.setAttribute('d', d);
+          path.setAttribute('stroke', stroke);
+          path.setAttribute('stroke-width', strokeW);
+          path.setAttribute('fill', 'none');
+          path.setAttribute('stroke-linecap', 'round');
+          path.setAttribute('stroke-linejoin', 'round');
+          svg.appendChild(path);
+        });
+      }
+    }
+
+    // ── Navigate bracket (tab index or 'prev'/'next') ─────────────────────────
+    function bracketNavigate(target) {
+      var cols = document.querySelectorAll('#bracket-scroll-container .bracket-column');
+      var totalCols = cols.length;
+      var newIdx = bracketActiveRound;
+      if (target === 'prev') {
+        newIdx = Math.max(0, bracketActiveRound - 1);
+      } else if (target === 'next') {
+        newIdx = Math.min(totalCols - 1, bracketActiveRound + 1);
+      } else {
+        newIdx = parseInt(target, 10);
+      }
+      if (newIdx !== bracketActiveRound) {
+        applyBracketRound(newIdx, true);
+      }
+    }
+
+    window.addEventListener('resize', function() {
+      var tabElim = document.getElementById('tab-content-eliminatorias');
+      if (tabElim && tabElim.style.display !== 'none') {
+        applyBracketRound(bracketActiveRound, false);
+      }
+    });
+
+    // Legacy aliases kept for compatibility
+    function scrollToRound(index) { bracketNavigate(index); }
+    function scrollBracket(dir)   { bracketNavigate(dir); }
+    function updateBracketScrollEffects() {}
+
+    function focusMatchInJogos(matchId) {
+      go('jogos');
+      setJF('Todos');
+      setTimeout(function() {
+        var matchEl = document.getElementById('match-card-' + matchId);
+        if (matchEl) {
+          matchEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          matchEl.style.transition = 'box-shadow 0.3s ease, border-color 0.3s ease';
+          matchEl.style.borderColor = 'var(--primary)';
+          matchEl.style.boxShadow = '0 0 15px rgba(230, 57, 70, 0.4)';
+          setTimeout(function() {
+            matchEl.style.borderColor = '';
+            matchEl.style.boxShadow = '';
+          }, 2000);
+        }
+      }, 300);
     }
 
     function loadJogosSilently() {
@@ -6145,7 +7224,7 @@
               + '</div>';
           }
 
-          return '<div class="' + cardClass + '">'
+          return '<div class="' + cardClass + '" id="match-card-' + m.id + '">'
             + '<div class="mc-head"><span class="mc-phase">' + (phase || m.round) + statusBadgeHtml + '</span><span class="mc-date">' + fmtTime(m.datetime) + (m.ground ? ' · ' + m.ground : '') + '</span></div>'
             + '<div class="mc-body">'
             + '<div class="team-l"><span class="tflag">' + tb(m.team1, m.team1_badge) + '</span><span class="tname">' + tn(m.team1) + '</span></div>'
