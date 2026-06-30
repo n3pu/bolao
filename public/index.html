@@ -5775,7 +5775,7 @@
                   }
 
                   return '<div class="mc today" style="border-left: 3px solid #ef4444; margin-bottom: 16px;">'
-                    + '<div class="mc-head"><span class="mc-phase">' + phase + ' <span class="badge-status live">AO VIVO</span></span><span class="mc-date">' + fmtTime(m.datetime) + (m.ground ? ' · ' + m.ground : '') + '</span></div>'
+                    + '<div class="mc-head"><span class="mc-phase">' + phase + ' <span class="badge-status live">AO VIVO</span> <span style="color:#ef4444; font-size:0.72rem; font-weight:600; font-family:monospace; margin-left:6px; display:inline-block; text-transform:none; letter-spacing:0;">(ID: ' + m.id + ')</span></span><span class="mc-date">' + fmtTime(m.datetime) + (m.ground ? ' · ' + m.ground : '') + '</span></div>'
                     + '<div class="mc-body">'
                     + '  <div class="team-l"><span class="tflag">' + tb(m.team1, m.team1_badge) + '</span><span class="tname">' + tn(m.team1) + '</span></div>'
                     + '  ' + scoreHtml
@@ -6299,8 +6299,8 @@
 
     // ── Round definitions (pairs: [topMatch, bottomMatch, nextMatch]) ────────
     var bracketRoundDefs = [
-      { title: '2ª Rodada', pairs: [[74,77,90],[73,75,89],[83,84,94],[81,82,93],[76,78,91],[79,80,92],[86,88,96],[85,87,95]] },
-      { title: 'Oitavas',    pairs: [[90,89,97],[94,93,98],[91,92,99],[96,95,100]] },
+      { title: '2ª Rodada', pairs: [[74,77,89],[73,75,90],[83,84,94],[81,82,93],[76,78,91],[79,80,92],[86,88,96],[85,87,95]] },
+      { title: 'Oitavas',    pairs: [[89,90,97],[94,93,98],[91,92,99],[96,95,100]] },
       { title: 'Quartas',    pairs: [[97,98,101],[99,100,102]] },
       { title: 'Semifinais', pairs: [[101,102,104]] },
       { title: 'Final' }
@@ -6863,6 +6863,7 @@
           : '';
 
         var cards = byDate[d].map(function (m) {
+          var adminBadge = isAdmin ? ' <span style="color:#ef4444; font-size:0.72rem; font-weight:600; font-family:monospace; margin-left:6px; display:inline-block; text-transform:none; letter-spacing:0;">(ID: ' + m.id + ')</span>' : '';
           var matchBets = allBets.filter(function (b) { return String(b.matchId) === String(m.id); });
           var hasResult = m.result && m.result.score1 !== null && m.result.score2 !== null;
 
@@ -7225,7 +7226,7 @@
           }
 
           return '<div class="' + cardClass + '" id="match-card-' + m.id + '">'
-            + '<div class="mc-head"><span class="mc-phase">' + (phase || m.round) + statusBadgeHtml + '</span><span class="mc-date">' + fmtTime(m.datetime) + (m.ground ? ' · ' + m.ground : '') + '</span></div>'
+            + '<div class="mc-head"><span class="mc-phase">' + (phase || m.round) + statusBadgeHtml + adminBadge + '</span><span class="mc-date">' + fmtTime(m.datetime) + (m.ground ? ' · ' + m.ground : '') + '</span></div>'
             + '<div class="mc-body">'
             + '<div class="team-l"><span class="tflag">' + tb(m.team1, m.team1_badge) + '</span><span class="tname">' + tn(m.team1) + '</span></div>'
             + scoreHtml
