@@ -1101,6 +1101,99 @@ module.exports = async function handler(req, res) {
           locked: isLocked(mappedMatch) || (r && r.score1 !== null && r.score2 !== null)
         };
       });
+
+      // Helper function to find a match winner dynamically
+      function getMatchWinner(m) {
+        if (!m || !m.result || m.result.score1 === null || m.result.score2 === null) return null;
+        const s1 = parseInt(m.result.score1);
+        const s2 = parseInt(m.result.score2);
+        if (s1 > s2) return { name: m.team1, badge: m.team1_badge };
+        if (s2 > s1) return { name: m.team2, badge: m.team2_badge };
+        if (m.result.penalties_winner) {
+          const isTeam1 = m.result.penalties_winner === m.team1;
+          return {
+            name: m.result.penalties_winner,
+            badge: isTeam1 ? m.team1_badge : m.team2_badge
+          };
+        }
+        return null;
+      }
+
+      // Helper function to find a match loser dynamically
+      function getMatchLoser(m) {
+        if (!m || !m.result || m.result.score1 === null || m.result.score2 === null) return null;
+        const s1 = parseInt(m.result.score1);
+        const s2 = parseInt(m.result.score2);
+        if (s1 > s2) return { name: m.team2, badge: m.team2_badge };
+        if (s2 > s1) return { name: m.team1, badge: m.team1_badge };
+        if (m.result.penalties_winner) {
+          const isTeam1 = m.result.penalties_winner === m.team1;
+          return {
+            name: isTeam1 ? m.team2 : m.team1,
+            badge: isTeam1 ? m.team2_badge : m.team1_badge
+          };
+        }
+        return null;
+      }
+
+      // Bracket progression definitions
+      const stages = [
+        // 1. Round of 32 -> Round of 16
+        { pairs: [['74','77','90'], ['73','75','89'], ['83','84','94'], ['81','82','93'], ['76','78','91'], ['79','80','92'], ['86','88','96'], ['85','87','95']] },
+        // 2. Round of 16 -> Quarter-finals
+        { pairs: [['90','89','97'], ['94','93','98'], ['91','92','99'], ['96','95','100']] },
+        // 3. Quarter-finals -> Semi-finals
+        { pairs: [['97','98','101'], ['99','100','102']] },
+        // 4. Semi-finals -> Final
+        { pairs: [['101','102','104']] }
+      ];
+
+      stages.forEach(stage => {
+        stage.pairs.forEach(([p1Id, p2Id, childId]) => {
+          const p1 = mapped.find(m => String(m.id) === p1Id);
+          const p2 = mapped.find(m => String(m.id) === p2Id);
+          const child = mapped.find(m => String(m.id) === childId);
+
+          if (child) {
+            if (p1) {
+              const w1 = getMatchWinner(p1);
+              if (w1) {
+                child.team1 = w1.name;
+                child.team1_badge = w1.badge;
+              }
+            }
+            if (p2) {
+              const w2 = getMatchWinner(p2);
+              if (w2) {
+                child.team2 = w2.name;
+                child.team2_badge = w2.badge;
+              }
+            }
+          }
+        });
+      });
+
+      // Special case: Third Place (103) is between losers of 101 and 102
+      const sf1 = mapped.find(m => String(m.id) === '101');
+      const sf2 = mapped.find(m => String(m.id) === '102');
+      const thirdPlace = mapped.find(m => String(m.id) === '103');
+      if (thirdPlace) {
+        if (sf1) {
+          const l1 = getMatchLoser(sf1);
+          if (l1) {
+            thirdPlace.team1 = l1.name;
+            thirdPlace.team1_badge = l1.badge;
+          }
+        }
+        if (sf2) {
+          const l2 = getMatchLoser(sf2);
+          if (l2) {
+            thirdPlace.team2 = l2.name;
+            thirdPlace.team2_badge = l2.badge;
+          }
+        }
+      }
+
       // Sort by datetime chronologically (both date and time combined)
       mapped.sort((a, b) => (a.datetime || '') < (b.datetime || '') ? -1 : 1);
       return res.status(200).json(mapped);
