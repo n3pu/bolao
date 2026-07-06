@@ -1219,10 +1219,18 @@ module.exports = async function handler(req, res) {
           const rCheck = await client.query('SELECT match_datetime FROM results WHERE match_id = $1', [id]);
           const hasTimeOverride = rCheck.rows.length > 0 && rCheck.rows[0].match_datetime;
           
-          if (hasTimeOverride) {
-            // Keep the row but clear result fields and reset manual_override to FALSE
+          if (match_datetime) {
             await client.query(
-              `UPDATE results SET score1 = NULL, score2 = NULL, penalties_winner = NULL, status = NULL, live_link = NULL, manual_override = FALSE WHERE match_id = $1`,
+              `INSERT INTO results (match_id, score1, score2, penalties_winner, status, live_link, match_datetime, manual_override)
+               VALUES ($1, NULL, NULL, NULL, 'scheduled', NULL, $2, TRUE)
+               ON CONFLICT (match_id) DO UPDATE SET 
+                 score1 = NULL, score2 = NULL, penalties_winner = NULL, status = 'scheduled', live_link = NULL, match_datetime = $2, manual_override = TRUE`,
+              [id, match_datetime]
+            );
+          } else if (hasTimeOverride) {
+            // Keep the row but clear result fields and set status to 'scheduled'
+            await client.query(
+              `UPDATE results SET score1 = NULL, score2 = NULL, penalties_winner = NULL, status = 'scheduled', live_link = NULL, manual_override = FALSE WHERE match_id = $1`,
               [id]
             );
           } else {
@@ -1269,10 +1277,36 @@ module.exports = async function handler(req, res) {
           if (match_datetime !== undefined) {
             updates.push(`match_datetime = $${paramIdx++}`);
             values.push(match_datetime);
+
+            // If the new match time is in the future, and no scores or status were explicitly sent,
+            // we should clear any auto-initialized scores/status to reopen the match for betting.
+            const newDate = new Date(match_datetime);
+            
+            // Check if the match already has a finished result in the database
+            const rCheck = await client.query('SELECT status, score1, score2 FROM results WHERE match_id = $1', [id]);
+            const currentStatus = rCheck.rows.length > 0 ? rCheck.rows[0].status : 'scheduled';
+            const hasFinishedScore = rCheck.rows.length > 0 && rCheck.rows[0].score1 !== null && rCheck.rows[0].score2 !== null && currentStatus === 'finished';
+            
+            const isFuture = !isNaN(newDate.getTime()) && new Date() < newDate;
+
+            if (isFuture || !hasFinishedScore) {
+              if (score1 === undefined) {
+                updates.push(`score1 = NULL`);
+              }
+              if (score2 === undefined) {
+                updates.push(`score2 = NULL`);
+              }
+              if (penalties_winner === undefined) {
+                updates.push(`penalties_winner = NULL`);
+              }
+              if (status === undefined) {
+                updates.push(`status = 'scheduled'`);
+              }
+            }
           }
 
-          // Mark as manually overridden if score or status is updated manually
-          if (score1 !== undefined || score2 !== undefined || penalties_winner !== undefined || status !== undefined) {
+          // Mark as manually overridden if score, status, or match_datetime is updated manually
+          if (score1 !== undefined || score2 !== undefined || penalties_winner !== undefined || status !== undefined || match_datetime !== undefined) {
             updates.push(`manual_override = TRUE`);
           }
 

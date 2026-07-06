@@ -5675,32 +5675,7 @@
       [0, 1, 2, 3].forEach(function (i) { document.getElementById('p' + i).value = ''; });
     }
 
-    function doLogin() {
-      var type = document.getElementById('login-type').value;
-      var pin = getPin();
-      var err = document.getElementById('merr');
-      err.textContent = '';
-      if (pin.length < 4) { err.textContent = 'Digite os 4 dígitos do PIN.'; return; }
 
-      if (type === 'admin') {
-        apiFetch('POST', '/api/auth/admin', { pin: pin }).then(function (r) {
-          if (r.error) { err.textContent = r.error; clearPin(); return; }
-          session = { type: 'admin', pin: pin };
-          closeLogin(); updateHeader();
-          toast('Bem-vindo, Admin');
-          go('admin');
-        });
-      } else {
-        var pid = document.getElementById('login-psel').value;
-        apiFetch('POST', '/api/auth/participant', { participantId: pid, pin: pin }).then(function (r) {
-          if (r.error) { err.textContent = r.error; clearPin(); return; }
-          session = { type: 'participant', id: r.id, name: r.name, pin: pin };
-          closeLogin(); updateHeader();
-          toast('Bem-vindo, ' + r.name);
-          go('apostas');
-        });
-      }
-    }
 
     // ─── Ranking ──────────────────────────────────────────────────────────────────
     function loadRanking() {
@@ -6976,6 +6951,9 @@
                 + ' <button class="btn-save" onclick="saveFinishResult(\'' + m.id + '\')"><i data-lucide="save" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Atualizar</button>';
             }
             actHtml = inputsHtml;
+            if (m.locked) {
+              actHtml += ' <button class="btn-save" style="background:rgba(59,130,246,0.15);border-color:#3b82f6;color:#3b82f6;margin-left:4px;" onclick="reopenForBets(\'' + m.id + '\')"><i data-lucide="unlock" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Reabrir p/ Palpites</button>';
+            }
             if (hasResult) {
               actHtml += ' <button class="btn-del" style="margin-left:4px" onclick="clearResult(\'' + m.id + '\')"><i data-lucide="trash-2" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Limpar</button>';
             }
@@ -7400,6 +7378,84 @@
           }
           if (r && r.error) { toast(r.error, 'err'); return; }
           toast('Placar removed');
+          if (isRank) {
+            loadRanking();
+          } else {
+            loadJogosSilently();
+          }
+        });
+    }
+
+    // ─── Reabrir para Palpites ───────────────────────────────────────────────────
+    function reopenForBets(id) {
+      if (!session || session.type !== 'admin') return;
+
+      var m = allMatches.find(function (x) { return String(x.id) === String(id); });
+      var matchLabel = m ? (m.team1 + ' x ' + m.team2) : ('Jogo #' + id);
+
+      var isRank = document.getElementById('page-ranking').classList.contains('on');
+      var activePageId = isRank ? 'page-ranking' : 'page-jogos';
+
+      // Get datetime from the input
+      var timeInp = document.getElementById('rtime-' + id);
+      var newUtcString = null;
+      var isFuture = true;
+
+      if (timeInp && timeInp.value) {
+        var dateVal = new Date(timeInp.value);
+        if (!isNaN(dateVal.getTime())) {
+          newUtcString = dateVal.toISOString();
+          if (dateVal <= new Date()) {
+            isFuture = false;
+          }
+        }
+      } else if (m && m.datetime) {
+        var dateVal = new Date(m.datetime);
+        if (dateVal <= new Date()) {
+          isFuture = false;
+        }
+      }
+
+      var warningMsg = '';
+      if (!isFuture) {
+        warningMsg = '\n\n⚠️ ATENÇÃO: O horário definido está no passado. A partida continuará bloqueada para palpites até que você altere o horário para uma data futura!';
+      }
+
+      if (!confirm('Deseja realmente REABRIR a partida ' + matchLabel + ' para palpites?\n\nIsso irá:\n1. Limpar o placar cadastrado\n2. Estornar premiações/saldos de Desafios (se houver)\n3. Permitir que os usuários enviem novos palpites (se o horário estiver no futuro).' + warningMsg)) {
+        return;
+      }
+
+      var btn = document.querySelector('#' + activePageId + ' button[onclick="reopenForBets(\'' + id + '\')"]');
+      var origHtml = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width:12px;height:12px;margin-right:4px;display:inline-block;vertical-align:-1px"></i>Reabrindo...';
+        lucide.createIcons();
+      }
+
+      var payload = {
+        score1: null,
+        score2: null,
+        status: 'scheduled',
+        penalties_winner: null
+      };
+
+      if (newUtcString) {
+        payload.match_datetime = newUtcString;
+      }
+
+      apiFetch('PUT', '/api/matches/' + id + '/result', payload, { 'x-admin-pin': session.pin })
+        .then(function (r) {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            lucide.createIcons();
+          }
+          if (r && r.error) {
+            toast(r.error, 'err');
+            return;
+          }
+          toast('Partida reaberta para palpites com sucesso!');
           if (isRank) {
             loadRanking();
           } else {
@@ -11363,12 +11419,7 @@
         });
     }
 
-    [0, 1, 2, 3].forEach(function (i) {
-      document.getElementById('p' + i).addEventListener('keydown', function (e) {
-        if (e.key === 'Backspace' && !this.value && i > 0) document.getElementById('p' + (i - 1)).focus();
-        if (e.key === 'Enter') doLogin();
-      });
-    });
+
 
     // Alterna os avatares dos 3 primeiros colocados a cada 3 segundos
     var showPodiumGifs = false;
